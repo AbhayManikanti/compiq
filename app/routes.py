@@ -1706,3 +1706,146 @@ def get_feature_matrix():
         matrix['categories'][feature.category].append(feature_data)
     
     return jsonify(matrix)
+
+
+# =============================================================================
+# DEMO DATA API
+# =============================================================================
+
+@api_bp.route('/demo/populate', methods=['POST'])
+def populate_demo_data():
+    """Populate database with demo data for demonstrations."""
+    import random
+    
+    # Check if already populated
+    if Competitor.query.count() >= 5:
+        return jsonify({'message': 'Demo data already exists', 'populated': False})
+    
+    try:
+        # Create competitors
+        competitors_data = [
+            {'name': 'Keysight Technologies', 'description': 'Leading electronic measurement company', 'website': 'https://www.keysight.com'},
+            {'name': 'Hioki', 'description': 'Japanese manufacturer of electrical measuring instruments', 'website': 'https://www.hioki.com'},
+            {'name': 'Rohde & Schwarz', 'description': 'German technology company in T&M', 'website': 'https://www.rohde-schwarz.com'},
+            {'name': 'Tektronix', 'description': 'Leading oscilloscope manufacturer', 'website': 'https://www.tek.com'},
+            {'name': 'National Instruments', 'description': 'Automated test equipment', 'website': 'https://www.ni.com'},
+        ]
+        
+        competitors = []
+        for c_data in competitors_data:
+            existing = Competitor.query.filter_by(name=c_data['name']).first()
+            if existing:
+                competitors.append(existing)
+            else:
+                c = Competitor(**c_data)
+                db.session.add(c)
+                db.session.flush()
+                competitors.append(c)
+        
+        # Create monitored URLs
+        url_types = ['product_page', 'pricing_page', 'press_room', 'careers', 'changelog']
+        for comp in competitors:
+            if MonitoredURL.query.filter_by(competitor_id=comp.id).count() == 0:
+                for page_type in url_types:
+                    url = MonitoredURL(
+                        competitor_id=comp.id,
+                        url=f"{comp.website}/{page_type.replace('_', '-')}",
+                        name=f"{comp.name} - {page_type.replace('_', ' ').title()}",
+                        page_type=page_type,
+                        check_interval_hours=24,
+                        is_active=True
+                    )
+                    db.session.add(url)
+        
+        # Create alerts
+        alert_templates = [
+            {'signal_type': 'product_launch', 'risk_level': 'high', 'title': '{} Launches New 8-Channel Oscilloscope'},
+            {'signal_type': 'pricing_change', 'risk_level': 'medium', 'title': '{} Announces 15% Price Reduction'},
+            {'signal_type': 'partnership', 'risk_level': 'high', 'title': '{} Partners with Major Semiconductor Manufacturer'},
+            {'signal_type': 'feature_update', 'risk_level': 'medium', 'title': '{} Adds AI-Powered Analysis'},
+            {'signal_type': 'expansion', 'risk_level': 'low', 'title': '{} Opens New R&D Center'},
+            {'signal_type': 'leadership_change', 'risk_level': 'medium', 'title': '{} Appoints New VP of Product'},
+        ]
+        
+        for i, template in enumerate(alert_templates):
+            comp = random.choice(competitors)
+            alert = Alert(
+                competitor_id=comp.id,
+                source_type='page_change',
+                signal_type=template['signal_type'],
+                risk_level=template['risk_level'],
+                title=template['title'].format(comp.name),
+                summary='Demo alert for demonstration purposes.',
+                status='new' if i < 3 else random.choice(['acknowledged', 'in_progress', 'resolved']),
+                detected_at=datetime.utcnow() - timedelta(days=random.randint(0, 14)),
+                source_url=f"{comp.website}/news"
+            )
+            db.session.add(alert)
+        
+        # Create battle cards
+        for comp in competitors[:3]:
+            card = BattleCard(
+                competitor_id=comp.id,
+                name=f"{comp.name} Battle Card",
+                elevator_pitch=f"When competing against {comp.name}, emphasize our superior accuracy and support.",
+                target_segment="Industrial Manufacturing",
+                our_strengths=json.dumps(["Best-in-class accuracy", "Industry-leading warranty", "Comprehensive support"]),
+                competitor_weaknesses=json.dumps(["Limited service network", "Slower product cycles"]),
+                key_differentiators=json.dumps(["20% better accuracy", "24/7 support with 4-hour SLA"]),
+                trap_questions=json.dumps(["Ask about calibration intervals", "Inquire about support response times"]),
+                status='active'
+            )
+            db.session.add(card)
+        
+        # Create win/loss records
+        wl_data = [
+            {'outcome': 'won', 'deal_name': 'Automotive Tier 1 Test', 'deal_value': 450000},
+            {'outcome': 'lost', 'deal_name': 'Aerospace MRO Equipment', 'deal_value': 320000, 'primary_loss_reason': 'pricing'},
+            {'outcome': 'won', 'deal_name': 'Semiconductor Fab Expansion', 'deal_value': 890000},
+        ]
+        for wl in wl_data:
+            record = WinLossRecord(
+                competitor_id=random.choice(competitors).id,
+                outcome=wl['outcome'],
+                deal_name=wl['deal_name'],
+                deal_value=wl['deal_value'],
+                customer_name='Demo Customer',
+                outcome_date=datetime.utcnow() - timedelta(days=random.randint(10, 60)),
+                primary_loss_reason=wl.get('primary_loss_reason')
+            )
+            db.session.add(record)
+        
+        # Create feature comparisons
+        features = [
+            {'category': 'Accuracy', 'feature_name': 'DC Voltage Accuracy', 'importance': 9, 'our_capability': 'full'},
+            {'category': 'Connectivity', 'feature_name': 'Cloud Data Sync', 'importance': 7, 'our_capability': 'full'},
+            {'category': 'Safety', 'feature_name': 'CAT IV Rating', 'importance': 10, 'our_capability': 'full'},
+        ]
+        for feat in features:
+            fc = FeatureComparison(
+                category=feat['category'],
+                feature_name=feat['feature_name'],
+                customer_importance=feat['importance'],
+                our_capability=feat['our_capability'],
+                competitor_capabilities=json.dumps({
+                    str(competitors[0].id): {'capability': 'partial'},
+                    str(competitors[1].id): {'capability': 'full'},
+                })
+            )
+            db.session.add(fc)
+        
+        db.session.commit()
+        
+        return jsonify({
+            'message': 'Demo data populated successfully',
+            'populated': True,
+            'counts': {
+                'competitors': Competitor.query.count(),
+                'urls': MonitoredURL.query.count(),
+                'alerts': Alert.query.count(),
+                'battle_cards': BattleCard.query.count(),
+            }
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
