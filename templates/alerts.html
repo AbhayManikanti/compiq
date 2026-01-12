@@ -1,0 +1,366 @@
+{% extends "base.html" %}
+
+{% block title %}Alerts - Competitor Monitor{% endblock %}
+{% block page_title %}Alerts{% endblock %}
+
+{% block content %}
+<!-- Filters -->
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="row g-3 align-items-end">
+            <div class="col-md-2">
+                <label class="form-label">Status</label>
+                <select class="form-select" id="filterStatus">
+                    <option value="">All Statuses</option>
+                    <option value="new" selected>New</option>
+                    <option value="acknowledged">Acknowledged</option>
+                    <option value="in_progress">In Progress</option>
+                    <option value="resolved">Resolved</option>
+                    <option value="dismissed">Dismissed</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Risk Level</label>
+                <select class="form-select" id="filterRisk">
+                    <option value="">All Levels</option>
+                    <option value="critical">Critical</option>
+                    <option value="high">High</option>
+                    <option value="medium">Medium</option>
+                    <option value="low">Low</option>
+                    <option value="info">Info</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Competitor</label>
+                <select class="form-select" id="filterCompetitor">
+                    <option value="">All Competitors</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Signal Type</label>
+                <select class="form-select" id="filterSignal">
+                    <option value="">All Types</option>
+                    <option value="product_launch">Product Launch</option>
+                    <option value="pricing_change">Pricing Change</option>
+                    <option value="feature_update">Feature Update</option>
+                    <option value="partnership">Partnership</option>
+                    <option value="acquisition">Acquisition</option>
+                    <option value="leadership_change">Leadership Change</option>
+                    <option value="marketing_campaign">Marketing Campaign</option>
+                    <option value="other">Other</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Time Period</label>
+                <select class="form-select" id="filterDays">
+                    <option value="1">Last 24 hours</option>
+                    <option value="7" selected>Last 7 days</option>
+                    <option value="30">Last 30 days</option>
+                    <option value="90">Last 90 days</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button class="btn btn-primary w-100" onclick="applyFilters()">
+                    <i class="bi bi-funnel"></i> Apply Filters
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Bulk Actions -->
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <span class="text-muted">Showing <span id="alertCount">0</span> alerts</span>
+    </div>
+    <div class="d-flex gap-2">
+        <div class="btn-group">
+            <button class="btn btn-outline-success btn-sm dropdown-toggle" data-bs-toggle="dropdown">
+                <i class="bi bi-download"></i> Export
+            </button>
+            <ul class="dropdown-menu">
+                <li><a class="dropdown-item" href="#" onclick="exportAlerts('pdf')"><i class="bi bi-file-pdf text-danger"></i> Export as PDF</a></li>
+                <li><a class="dropdown-item" href="#" onclick="exportAlerts('csv')"><i class="bi bi-file-earmark-spreadsheet text-success"></i> Export as CSV</a></li>
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item" href="#" onclick="exportFullReport()"><i class="bi bi-file-richtext text-primary"></i> Full Competitive Report (PDF)</a></li>
+            </ul>
+        </div>
+        <div class="btn-group">
+            <button class="btn btn-outline-secondary btn-sm" onclick="bulkAction('acknowledge')">
+                <i class="bi bi-check"></i> Acknowledge Selected
+            </button>
+            <button class="btn btn-outline-secondary btn-sm" onclick="bulkAction('resolve')">
+                <i class="bi bi-check-all"></i> Resolve Selected
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Alerts List -->
+<div id="alertsList">
+    <div class="loading-spinner">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
+</div>
+
+<!-- Pagination -->
+<nav id="pagination" class="mt-4" style="display: none;">
+    <ul class="pagination justify-content-center">
+    </ul>
+</nav>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let currentPage = 1;
+let totalPages = 1;
+
+async function loadCompetitors() {
+    try {
+        const competitors = await fetchAPI('/competitors');
+        const select = document.getElementById('filterCompetitor');
+        
+        competitors.forEach(comp => {
+            const option = document.createElement('option');
+            option.value = comp.id;
+            option.textContent = comp.name;
+            select.appendChild(option);
+        });
+    } catch (error) {
+        console.error('Error loading competitors:', error);
+    }
+}
+
+async function loadAlerts(page = 1) {
+    currentPage = page;
+    
+    const params = new URLSearchParams();
+    params.set('page', page);
+    params.set('per_page', 20);
+    
+    const status = document.getElementById('filterStatus').value;
+    const risk = document.getElementById('filterRisk').value;
+    const competitor = document.getElementById('filterCompetitor').value;
+    const signal = document.getElementById('filterSignal').value;
+    const days = document.getElementById('filterDays').value;
+    
+    if (status) params.set('status', status);
+    if (risk) params.set('risk_level', risk);
+    if (competitor) params.set('competitor_id', competitor);
+    if (signal) params.set('signal_type', signal);
+    if (days) params.set('days', days);
+    
+    try {
+        const data = await fetchAPI(`/alerts?${params.toString()}`);
+        
+        document.getElementById('alertCount').textContent = data.total;
+        totalPages = data.pages;
+        
+        renderAlerts(data.alerts);
+        renderPagination(data.current_page, data.pages);
+        
+    } catch (error) {
+        console.error('Error loading alerts:', error);
+        document.getElementById('alertsList').innerHTML = '<p class="text-danger text-center p-4">Error loading alerts</p>';
+    }
+}
+
+function renderAlerts(alerts) {
+    const container = document.getElementById('alertsList');
+    
+    if (!alerts || alerts.length === 0) {
+        container.innerHTML = '<div class="text-center text-muted p-5"><i class="bi bi-check-circle" style="font-size: 3rem;"></i><p class="mt-3">No alerts found</p></div>';
+        return;
+    }
+    
+    let html = '';
+    
+    for (const alert of alerts) {
+        const riskClass = alert.risk_level || 'info';
+        const riskBadge = getRiskBadgeClass(alert.risk_level);
+        
+        html += `
+            <div class="alert-card ${riskClass}" data-id="${alert.id}">
+                <div class="d-flex align-items-start">
+                    <div class="form-check me-3">
+                        <input class="form-check-input alert-checkbox" type="checkbox" value="${alert.id}">
+                    </div>
+                    <div class="flex-grow-1">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <div>
+                                <h6 class="mb-1">
+                                    <a href="/alerts/${alert.id}" class="text-decoration-none text-dark">
+                                        ${alert.title}
+                                    </a>
+                                </h6>
+                                <small class="text-muted">
+                                    <i class="bi bi-building"></i> ${alert.competitor_name || 'Unknown'} &bull;
+                                    <i class="bi bi-clock"></i> ${formatDate(alert.detected_at)}
+                                </small>
+                            </div>
+                            <div class="text-end">
+                                <span class="badge ${riskBadge}">${(alert.risk_level || 'unknown').toUpperCase()}</span>
+                                <span class="badge bg-secondary ms-1">${(alert.signal_type || '').replace('_', ' ')}</span>
+                            </div>
+                        </div>
+                        <p class="mb-2 text-muted">${alert.summary || ''}</p>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <span class="badge ${alert.status === 'new' ? 'bg-danger' : 'bg-secondary'}">${alert.status}</span>
+                                ${alert.confidence_score ? `<small class="text-muted ms-2">Confidence: ${alert.confidence_score}%</small>` : ''}
+                            </div>
+                            <div>
+                                ${alert.status === 'new' ? `
+                                    <button class="btn btn-sm btn-outline-primary me-1" onclick="acknowledgeAlert(${alert.id}, event)">
+                                        <i class="bi bi-check"></i> Acknowledge
+                                    </button>
+                                ` : ''}
+                                <a href="/alerts/${alert.id}" class="btn btn-sm btn-outline-secondary">
+                                    <i class="bi bi-eye"></i> View Details
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    container.innerHTML = html;
+}
+
+function renderPagination(current, total) {
+    const nav = document.getElementById('pagination');
+    const ul = nav.querySelector('ul');
+    
+    if (total <= 1) {
+        nav.style.display = 'none';
+        return;
+    }
+    
+    nav.style.display = 'block';
+    let html = '';
+    
+    // Previous
+    html += `
+        <li class="page-item ${current === 1 ? 'disabled' : ''}">
+            <a class="page-link" href="#" onclick="loadAlerts(${current - 1}); return false;">Previous</a>
+        </li>
+    `;
+    
+    // Pages
+    for (let i = 1; i <= total; i++) {
+        if (i === 1 || i === total || (i >= current - 2 && i <= current + 2)) {
+            html += `
+                <li class="page-item ${i === current ? 'active' : ''}">
+                    <a class="page-link" href="#" onclick="loadAlerts(${i}); return false;">${i}</a>
+                </li>
+            `;
+        } else if (i === current - 3 || i === current + 3) {
+            html += '<li class="page-item disabled"><span class="page-link">...</span></li>';
+        }
+    }
+    
+    // Next
+    html += `
+        <li class="page-item ${current === total ? 'disabled' : ''}">
+            <a class="page-link" href="#" onclick="loadAlerts(${current + 1}); return false;">Next</a>
+        </li>
+    `;
+    
+    ul.innerHTML = html;
+}
+
+function applyFilters() {
+    loadAlerts(1);
+}
+
+async function acknowledgeAlert(id, event) {
+    if (event) event.stopPropagation();
+    
+    try {
+        await fetchAPI(`/alerts/${id}/acknowledge`, { method: 'POST' });
+        showToast('Success', 'Alert acknowledged', 'success');
+        loadAlerts(currentPage);
+    } catch (error) {
+        showToast('Error', 'Failed to acknowledge alert', 'error');
+    }
+}
+
+async function bulkAction(action) {
+    const checkboxes = document.querySelectorAll('.alert-checkbox:checked');
+    const ids = Array.from(checkboxes).map(cb => cb.value);
+    
+    if (ids.length === 0) {
+        showToast('Warning', 'No alerts selected', 'warning');
+        return;
+    }
+    
+    for (const id of ids) {
+        try {
+            if (action === 'acknowledge') {
+                await fetchAPI(`/alerts/${id}/acknowledge`, { method: 'POST' });
+            } else if (action === 'resolve') {
+                await fetchAPI(`/alerts/${id}/resolve`, { method: 'POST' });
+            }
+        } catch (error) {
+            console.error(`Error processing alert ${id}:`, error);
+        }
+    }
+    
+    showToast('Success', `${ids.length} alerts ${action}d`, 'success');
+    loadAlerts(currentPage);
+}
+
+// Export Functions
+function exportAlerts(format) {
+    const params = new URLSearchParams();
+    
+    const status = document.getElementById('filterStatus').value;
+    const risk = document.getElementById('filterRisk').value;
+    const competitor = document.getElementById('filterCompetitor').value;
+    const days = document.getElementById('filterDays').value;
+    
+    if (status) params.append('status', status);
+    if (risk) params.append('risk_level', risk);
+    if (competitor) params.append('competitor_id', competitor);
+    if (days) params.append('days', days);
+    
+    const url = `/api/export/alerts/${format}?${params.toString()}`;
+    
+    showToast('Exporting', `Generating ${format.toUpperCase()} export...`, 'info');
+    
+    // Download the file
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `alerts_export.${format}`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+function exportFullReport() {
+    showToast('Generating Report', 'Creating comprehensive competitive intelligence report...', 'info');
+    
+    const link = document.createElement('a');
+    link.href = '/api/export/report/pdf';
+    link.download = 'competitive_intelligence_report.pdf';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+// Initialize
+document.addEventListener('DOMContentLoaded', () => {
+    loadCompetitors();
+    loadAlerts();
+});
+
+// Filter change handlers
+document.querySelectorAll('#filterStatus, #filterRisk, #filterCompetitor, #filterSignal, #filterDays').forEach(el => {
+    el.addEventListener('change', () => loadAlerts(1));
+});
+</script>
+{% endblock %}

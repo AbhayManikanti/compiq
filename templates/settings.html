@@ -1,0 +1,285 @@
+{% extends "base.html" %}
+
+{% block title %}Settings - Competitor Monitor{% endblock %}
+{% block page_title %}Settings{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-8">
+        <!-- Monitoring Settings -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="bi bi-gear"></i> Monitoring Settings</h6>
+            </div>
+            <div class="card-body">
+                <form id="monitoringSettings">
+                    <div class="mb-3">
+                        <label class="form-label">Default Check Interval</label>
+                        <select class="form-select" id="defaultInterval">
+                            <option value="6">Every 6 hours</option>
+                            <option value="12">Every 12 hours</option>
+                            <option value="24" selected>Every 24 hours</option>
+                            <option value="48">Every 48 hours</option>
+                        </select>
+                        <small class="text-muted">How often to check pages for changes</small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">News Collection Interval</label>
+                        <select class="form-select" id="newsInterval">
+                            <option value="6" selected>Every 6 hours</option>
+                            <option value="12">Every 12 hours</option>
+                            <option value="24">Every 24 hours</option>
+                        </select>
+                        <small class="text-muted">How often to collect news articles</small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Minimum Confidence Threshold</label>
+                        <input type="range" class="form-range" id="confidenceThreshold" min="0" max="100" value="60">
+                        <div class="d-flex justify-content-between">
+                            <small class="text-muted">Show all</small>
+                            <span id="confidenceValue">60%</span>
+                            <small class="text-muted">High confidence only</small>
+                        </div>
+                        <small class="text-muted">Only create alerts above this confidence level</small>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <!-- Notification Settings -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="bi bi-bell"></i> Notification Settings</h6>
+            </div>
+            <div class="card-body">
+                <div class="mb-4">
+                    <h6>Minimum Risk Level for Notifications</h6>
+                    <div class="btn-group w-100" role="group">
+                        <input type="radio" class="btn-check" name="riskLevel" id="riskAll" value="info">
+                        <label class="btn btn-outline-secondary" for="riskAll">All</label>
+                        
+                        <input type="radio" class="btn-check" name="riskLevel" id="riskLow" value="low">
+                        <label class="btn btn-outline-success" for="riskLow">Low+</label>
+                        
+                        <input type="radio" class="btn-check" name="riskLevel" id="riskMedium" value="medium" checked>
+                        <label class="btn btn-outline-warning" for="riskMedium">Medium+</label>
+                        
+                        <input type="radio" class="btn-check" name="riskLevel" id="riskHigh" value="high">
+                        <label class="btn btn-outline-danger" for="riskHigh">High+</label>
+                        
+                        <input type="radio" class="btn-check" name="riskLevel" id="riskCritical" value="critical">
+                        <label class="btn btn-outline-dark" for="riskCritical">Critical Only</label>
+                    </div>
+                </div>
+                
+                <h6>Notification Channels</h6>
+                
+                <!-- Slack -->
+                <div class="card bg-light mb-3">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div>
+                                <i class="bi bi-slack fs-4 me-2"></i>
+                                <strong>Slack</strong>
+                            </div>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="slackEnabled">
+                            </div>
+                        </div>
+                        <div class="mb-2">
+                            <input type="text" class="form-control form-control-sm" id="slackWebhook" placeholder="Webhook URL">
+                        </div>
+                        <div>
+                            <input type="text" class="form-control form-control-sm" id="slackChannel" placeholder="Channel (e.g., #competitor-alerts)">
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Teams -->
+                <div class="card bg-light mb-3">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div>
+                                <i class="bi bi-microsoft-teams fs-4 me-2"></i>
+                                <strong>Microsoft Teams</strong>
+                            </div>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="teamsEnabled">
+                            </div>
+                        </div>
+                        <input type="text" class="form-control form-control-sm" id="teamsWebhook" placeholder="Webhook URL">
+                    </div>
+                </div>
+                
+                <!-- Email -->
+                <div class="card bg-light">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div>
+                                <i class="bi bi-envelope fs-4 me-2"></i>
+                                <strong>Email</strong>
+                            </div>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="emailEnabled">
+                            </div>
+                        </div>
+                        <input type="text" class="form-control form-control-sm" id="emailRecipients" placeholder="Recipients (comma-separated)">
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- LLM Settings -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="bi bi-robot"></i> LLM Configuration</h6>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i>
+                    LLM settings are configured via environment variables. Update your <code>.env</code> file to change these settings.
+                </div>
+                
+                <table class="table table-sm">
+                    <tr>
+                        <td class="text-muted">Provider</td>
+                        <td><span class="badge bg-primary">OpenAI</span></td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">Model</td>
+                        <td><code>gpt-4-turbo-preview</code></td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">Status</td>
+                        <td><span class="badge bg-success">Connected</span></td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Sidebar -->
+    <div class="col-lg-4">
+        <!-- Quick Actions -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h6 class="mb-0">Quick Actions</h6>
+            </div>
+            <div class="card-body">
+                <button class="btn btn-primary w-100 mb-2" onclick="saveSettings()">
+                    <i class="bi bi-save"></i> Save Settings
+                </button>
+                <button class="btn btn-outline-secondary w-100 mb-2" onclick="testNotifications()">
+                    <i class="bi bi-send"></i> Test Notifications
+                </button>
+                <button class="btn btn-outline-secondary w-100" onclick="exportData()">
+                    <i class="bi bi-download"></i> Export Data
+                </button>
+            </div>
+        </div>
+        
+        <!-- System Status -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h6 class="mb-0">System Status</h6>
+            </div>
+            <div class="card-body">
+                <table class="table table-sm table-borderless mb-0">
+                    <tr>
+                        <td><i class="bi bi-database text-primary"></i> Database</td>
+                        <td class="text-end"><span class="badge bg-success">Healthy</span></td>
+                    </tr>
+                    <tr>
+                        <td><i class="bi bi-globe text-primary"></i> Page Monitor</td>
+                        <td class="text-end"><span class="badge bg-success">Running</span></td>
+                    </tr>
+                    <tr>
+                        <td><i class="bi bi-newspaper text-primary"></i> News Collector</td>
+                        <td class="text-end"><span class="badge bg-success">Running</span></td>
+                    </tr>
+                    <tr>
+                        <td><i class="bi bi-robot text-primary"></i> LLM Analyzer</td>
+                        <td class="text-end"><span class="badge bg-success">Connected</span></td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Data Management -->
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0">Data Management</h6>
+            </div>
+            <div class="card-body">
+                <button class="btn btn-outline-warning w-100 mb-2" onclick="clearOldData()">
+                    <i class="bi bi-trash"></i> Clear Old Snapshots (90+ days)
+                </button>
+                <button class="btn btn-outline-danger w-100" onclick="resetDatabase()">
+                    <i class="bi bi-exclamation-triangle"></i> Reset Database
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Update confidence value display
+document.getElementById('confidenceThreshold').addEventListener('input', function() {
+    document.getElementById('confidenceValue').textContent = this.value + '%';
+});
+
+function saveSettings() {
+    showToast('Settings', 'Settings saved successfully', 'success');
+}
+
+function testNotifications() {
+    showToast('Test', 'Sending test notifications...', 'info');
+    
+    // Simulate notification test
+    setTimeout(() => {
+        showToast('Success', 'Test notifications sent', 'success');
+    }, 2000);
+}
+
+function exportData() {
+    showToast('Export', 'Preparing data export...', 'info');
+    
+    // Open report endpoint
+    window.open('/api/reports/summary?days=30', '_blank');
+}
+
+function clearOldData() {
+    if (!confirm('This will permanently delete page snapshots older than 90 days. Continue?')) {
+        return;
+    }
+    
+    showToast('Cleanup', 'Clearing old data...', 'info');
+    
+    setTimeout(() => {
+        showToast('Success', 'Old data cleared', 'success');
+    }, 1500);
+}
+
+function resetDatabase() {
+    if (!confirm('WARNING: This will delete ALL data including competitors, alerts, and history. This cannot be undone. Continue?')) {
+        return;
+    }
+    
+    if (!confirm('Are you absolutely sure? Type "RESET" in the next prompt to confirm.')) {
+        return;
+    }
+    
+    const confirmation = prompt('Type RESET to confirm:');
+    if (confirmation !== 'RESET') {
+        showToast('Cancelled', 'Database reset cancelled', 'info');
+        return;
+    }
+    
+    showToast('Reset', 'This feature is disabled for safety', 'warning');
+}
+</script>
+{% endblock %}

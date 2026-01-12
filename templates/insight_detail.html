@@ -1,0 +1,498 @@
+{% extends "base.html" %}
+
+{% block title %}Insight: {{ insight.title }} - Competitor Monitor{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="/">Dashboard</a></li>
+            <li class="breadcrumb-item"><a href="/insights">Insights</a></li>
+            <li class="breadcrumb-item active">{{ insight.title[:50] }}...</li>
+        </ol>
+    </nav>
+
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-start mb-4">
+        <div>
+            <h2>{{ insight.title }}</h2>
+            <p class="text-muted">
+                <i class="bi bi-building me-1"></i> {{ insight.competitor.name if insight.competitor else 'Unknown' }} •
+                <i class="bi bi-calendar me-1"></i> {{ insight.created_at.strftime('%B %d, %Y at %H:%M') }}
+            </p>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <a href="/api/export/insight/{{ insight.id }}/pdf" class="btn btn-outline-danger" title="Export as PDF">
+                <i class="bi bi-file-pdf"></i> Export PDF
+            </a>
+            <span class="badge bg-{{ 'danger' if insight.urgency_score >= 70 else ('warning' if insight.urgency_score >= 40 else 'info') }} fs-6 me-2">
+                Urgency: {{ insight.urgency_score }}
+            </span>
+            <span class="badge bg-{{ 'danger' if insight.impact_score >= 70 else ('warning' if insight.impact_score >= 40 else 'info') }} fs-6">
+                Impact: {{ insight.impact_score }}
+            </span>
+            {% if insight.is_reviewed %}
+            <span class="badge bg-success fs-6 ms-2"><i class="bi bi-check-circle"></i> Reviewed</span>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Executive Summary -->
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0"><i class="bi bi-star me-2"></i>Executive Summary</h5>
+        </div>
+        <div class="card-body">
+            <p class="lead">{{ insight.executive_summary }}</p>
+            <div class="row">
+                <div class="col-md-4">
+                    <strong>Confidence Score:</strong>
+                    <div class="progress mt-1">
+                        <div class="progress-bar bg-success" style="width: {{ insight.confidence_score }}%">{{ insight.confidence_score }}%</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Product Comparison -->
+    {% if insight.competitor_product or insight.fluke_product %}
+    <div class="card mb-4">
+        <div class="card-header bg-info text-white">
+            <h5 class="mb-0"><i class="bi bi-arrow-left-right me-2"></i>Product Comparison</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-5">
+                    <div class="card bg-light h-100">
+                        <div class="card-header">
+                            <strong>{{ insight.competitor.name if insight.competitor else 'Competitor' }}</strong>
+                        </div>
+                        <div class="card-body">
+                            <h4>{{ insight.competitor_product or 'N/A' }}</h4>
+                            <h6 class="mt-3">Advantages:</h6>
+                            <ul class="text-danger" id="competitor-advantages"></ul>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-2 d-flex align-items-center justify-content-center">
+                    <h1 class="text-muted">VS</h1>
+                </div>
+                <div class="col-md-5">
+                    <div class="card bg-primary bg-opacity-10 h-100">
+                        <div class="card-header bg-primary text-white">
+                            <strong>Fluke Corporation</strong>
+                        </div>
+                        <div class="card-body">
+                            <h4>{{ insight.fluke_product or 'N/A' }}</h4>
+                            <h6 class="mt-3">Advantages:</h6>
+                            <ul class="text-success" id="fluke-advantages"></ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            {% if insight.comparison_summary %}
+            <div class="alert alert-secondary mt-3">
+                <strong>Summary:</strong> {{ insight.comparison_summary }}
+            </div>
+            {% endif %}
+            
+            <!-- Feature Comparison Table -->
+            <div class="mt-4">
+                <h6><i class="bi bi-table me-1"></i>Feature-by-Feature Comparison</h6>
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Feature</th>
+                                <th>Fluke</th>
+                                <th>{{ insight.competitor.name if insight.competitor else 'Competitor' }}</th>
+                                <th>Winner</th>
+                            </tr>
+                        </thead>
+                        <tbody id="feature-comparison-table">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            {% if insight.pricing_comparison %}
+            <div class="alert alert-warning mt-3">
+                <strong><i class="bi bi-currency-dollar me-1"></i>Pricing Analysis:</strong> {{ insight.pricing_comparison }}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Team-Specific Insights -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="bi bi-people me-2"></i>Team Recommendations</h5>
+        </div>
+        <div class="card-body">
+            <ul class="nav nav-tabs" id="teamTabs" role="tablist">
+                <li class="nav-item">
+                    <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#sales" type="button">
+                        <i class="bi bi-graph-up me-1"></i> Sales
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#marketing" type="button">
+                        <i class="bi bi-megaphone me-1"></i> Marketing
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#product" type="button">
+                        <i class="bi bi-box me-1"></i> Product
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#engineering" type="button">
+                        <i class="bi bi-cpu me-1"></i> Engineering
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#executive" type="button">
+                        <i class="bi bi-briefcase me-1"></i> Executive
+                    </button>
+                </li>
+            </ul>
+            
+            <div class="tab-content p-3" id="teamTabContent">
+                <!-- Sales Tab -->
+                <div class="tab-pane fade show active" id="sales" role="tabpanel">
+                    <div id="sales-content"></div>
+                </div>
+                
+                <!-- Marketing Tab -->
+                <div class="tab-pane fade" id="marketing" role="tabpanel">
+                    <div id="marketing-content"></div>
+                </div>
+                
+                <!-- Product Tab -->
+                <div class="tab-pane fade" id="product" role="tabpanel">
+                    <div id="product-content"></div>
+                </div>
+                
+                <!-- Engineering Tab -->
+                <div class="tab-pane fade" id="engineering" role="tabpanel">
+                    <div id="engineering-content"></div>
+                </div>
+                
+                <!-- Executive Tab -->
+                <div class="tab-pane fade" id="executive" role="tabpanel">
+                    <div id="executive-content"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Action Items -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card h-100 border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h6 class="mb-0"><i class="bi bi-lightning me-1"></i>Immediate Actions (24-48h)</h6>
+                </div>
+                <div class="card-body">
+                    <ul class="list-unstyled" id="immediate-actions"></ul>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card h-100 border-warning">
+                <div class="card-header bg-warning text-dark">
+                    <h6 class="mb-0"><i class="bi bi-calendar-week me-1"></i>Short-Term (1-4 weeks)</h6>
+                </div>
+                <div class="card-body">
+                    <ul class="list-unstyled" id="short-term-actions"></ul>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card h-100 border-info">
+                <div class="card-header bg-info text-white">
+                    <h6 class="mb-0"><i class="bi bi-calendar-month me-1"></i>Long-Term (Quarter+)</h6>
+                </div>
+                <div class="card-body">
+                    <ul class="list-unstyled" id="long-term-actions"></ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Review Section -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="bi bi-check-circle me-2"></i>Review & Notes</h5>
+        </div>
+        <div class="card-body">
+            {% if insight.is_reviewed %}
+            <div class="alert alert-success">
+                <i class="bi bi-check-circle me-2"></i>
+                Reviewed by <strong>{{ insight.reviewed_by or 'Unknown' }}</strong> on {{ insight.reviewed_at.strftime('%B %d, %Y') if insight.reviewed_at else 'Unknown date' }}
+            </div>
+            {% if insight.notes %}
+            <div class="mt-3">
+                <strong>Notes:</strong>
+                <p>{{ insight.notes }}</p>
+            </div>
+            {% endif %}
+            {% else %}
+            <form id="review-form">
+                <div class="mb-3">
+                    <label class="form-label">Your Name</label>
+                    <input type="text" class="form-control" id="reviewer-name" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Notes (optional)</label>
+                    <textarea class="form-control" id="review-notes" rows="3"></textarea>
+                </div>
+                <button type="submit" class="btn btn-success">
+                    <i class="bi bi-check me-1"></i> Mark as Reviewed
+                </button>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const insightData = {{ insight.to_dict()|tojson|safe }};
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Render product comparison elements
+    renderAdvantagesList('competitor-advantages', insightData.competitor_advantages);
+    renderAdvantagesList('fluke-advantages', insightData.fluke_advantages);
+    renderFeatureComparison(insightData.feature_comparison);
+    
+    renderTeamContent('sales', insightData.sales_insights);
+    renderTeamContent('marketing', insightData.marketing_insights);
+    renderTeamContent('product', insightData.product_insights);
+    renderTeamContent('engineering', insightData.engineering_insights);
+    renderTeamContent('executive', insightData.executive_insights);
+    
+    renderActions('immediate-actions', insightData.immediate_actions);
+    renderActions('short-term-actions', insightData.short_term_actions);
+    renderActions('long-term-actions', insightData.long_term_actions);
+    
+    // Review form handler
+    const form = document.getElementById('review-form');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            markAsReviewed();
+        });
+    }
+});
+
+function renderAdvantagesList(containerId, advantages) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    if (!advantages || advantages.length === 0) {
+        container.innerHTML = '<li class="text-muted">None identified</li>';
+        return;
+    }
+    container.innerHTML = advantages.map(adv => `<li>${escapeHtml(adv)}</li>`).join('');
+}
+
+function renderFeatureComparison(features) {
+    const container = document.getElementById('feature-comparison-table');
+    if (!container) return;
+    if (!features || Object.keys(features).length === 0) {
+        container.innerHTML = '<tr><td colspan="4" class="text-muted text-center">No feature comparison available</td></tr>';
+        return;
+    }
+    
+    let html = '';
+    for (const [feature, data] of Object.entries(features)) {
+        const winnerIcon = data.winner === 'fluke' ? '✓' : (data.winner === 'competitor' ? '' : '=');
+        const competitorIcon = data.winner === 'competitor' ? '✓' : (data.winner === 'fluke' ? '' : '=');
+        const importanceBadge = {
+            'high': 'danger',
+            'medium': 'warning',
+            'low': 'info'
+        }[data.importance] || 'secondary';
+        
+        html += `
+            <tr>
+                <td><strong>${escapeHtml(feature)}</strong>
+                    <span class="badge bg-${importanceBadge} ms-2">${data.importance || 'medium'}</span>
+                </td>
+                <td class="${data.winner === 'fluke' ? 'table-success' : ''}">${winnerIcon} ${escapeHtml(data.fluke || 'N/A')}</td>
+                <td class="${data.winner === 'competitor' ? 'table-danger' : ''}">${competitorIcon} ${escapeHtml(data.competitor || 'N/A')}</td>
+                <td class="text-center">
+                    ${data.winner === 'fluke' ? '<span class="badge bg-success">Fluke</span>' : 
+                      data.winner === 'competitor' ? '<span class="badge bg-danger">Competitor</span>' : 
+                      '<span class="badge bg-secondary">Tie</span>'}
+                </td>
+            </tr>
+        `;
+    }
+    container.innerHTML = html;
+}
+
+function renderTeamContent(team, data) {
+    const container = document.getElementById(`${team}-content`);
+    if (!data || !data.summary) {
+        container.innerHTML = '<p class="text-muted">No specific recommendations for this team.</p>';
+        return;
+    }
+    
+    const urgencyColors = { 'high': 'danger', 'medium': 'warning', 'low': 'info' };
+    
+    let html = `
+        <div class="d-flex justify-content-between align-items-start mb-3">
+            <p class="lead">${escapeHtml(data.summary)}</p>
+            ${data.urgency ? `<span class="badge bg-${urgencyColors[data.urgency] || 'secondary'}">${data.urgency} urgency</span>` : ''}
+        </div>
+    `;
+    
+    // Sales-specific
+    if (data.talking_points) {
+        html += '<h6><i class="bi bi-chat-quote me-1"></i>Talking Points:</h6><ul>';
+        data.talking_points.forEach(p => { html += `<li>${escapeHtml(p)}</li>`; });
+        html += '</ul>';
+    }
+    
+    if (data.objection_handlers) {
+        html += '<h6><i class="bi bi-shield-check me-1"></i>Objection Handlers:</h6><ul>';
+        data.objection_handlers.forEach(p => { html += `<li>${escapeHtml(p)}</li>`; });
+        html += '</ul>';
+    }
+    
+    if (data.competitive_positioning) {
+        html += `<h6><i class="bi bi-bullseye me-1"></i>Competitive Positioning:</h6><p>${escapeHtml(data.competitive_positioning)}</p>`;
+    }
+    
+    if (data.target_opportunities) {
+        html += '<h6><i class="bi bi-target me-1"></i>Target Opportunities:</h6><ul>';
+        data.target_opportunities.forEach(p => { html += `<li>${escapeHtml(p)}</li>`; });
+        html += '</ul>';
+    }
+    
+    // Marketing-specific
+    if (data.messaging_recommendations) {
+        html += '<h6><i class="bi bi-chat-text me-1"></i>Messaging Recommendations:</h6><ul>';
+        data.messaging_recommendations.forEach(p => { html += `<li>${escapeHtml(p)}</li>`; });
+        html += '</ul>';
+    }
+    
+    if (data.content_ideas) {
+        html += '<h6><i class="bi bi-file-text me-1"></i>Content Ideas:</h6><ul>';
+        data.content_ideas.forEach(p => { html += `<li>${escapeHtml(p)}</li>`; });
+        html += '</ul>';
+    }
+    
+    if (data.campaign_suggestions) {
+        html += '<h6><i class="bi bi-megaphone me-1"></i>Campaign Suggestions:</h6><ul>';
+        data.campaign_suggestions.forEach(p => { html += `<li>${escapeHtml(p)}</li>`; });
+        html += '</ul>';
+    }
+    
+    if (data.social_media_response) {
+        html += `<h6><i class="bi bi-share me-1"></i>Social Media Response:</h6><p>${escapeHtml(data.social_media_response)}</p>`;
+    }
+    
+    // Product-specific
+    if (data.feature_gaps) {
+        html += '<h6><i class="bi bi-puzzle me-1"></i>Feature Gaps:</h6><ul class="text-danger">';
+        data.feature_gaps.forEach(p => { html += `<li>${escapeHtml(p)}</li>`; });
+        html += '</ul>';
+    }
+    
+    if (data.roadmap_implications) {
+        html += `<h6><i class="bi bi-map me-1"></i>Roadmap Implications:</h6><p>${escapeHtml(data.roadmap_implications)}</p>`;
+    }
+    
+    if (data.innovation_opportunities) {
+        html += '<h6><i class="bi bi-lightbulb me-1"></i>Innovation Opportunities:</h6><ul class="text-success">';
+        data.innovation_opportunities.forEach(p => { html += `<li>${escapeHtml(p)}</li>`; });
+        html += '</ul>';
+    }
+    
+    // Engineering-specific
+    if (data.technical_analysis) {
+        html += `<h6><i class="bi bi-cpu me-1"></i>Technical Analysis:</h6><p>${escapeHtml(data.technical_analysis)}</p>`;
+    }
+    
+    if (data.r_and_d_priorities) {
+        html += '<h6><i class="bi bi-flask me-1"></i>R&D Priorities:</h6><ul>';
+        data.r_and_d_priorities.forEach(p => { html += `<li>${escapeHtml(p)}</li>`; });
+        html += '</ul>';
+    }
+    
+    if (data.patent_considerations) {
+        html += `<h6><i class="bi bi-file-earmark-text me-1"></i>Patent Considerations:</h6><p>${escapeHtml(data.patent_considerations)}</p>`;
+    }
+    
+    // Executive-specific
+    if (data.strategic_implications) {
+        html += `<h6><i class="bi bi-diagram-3 me-1"></i>Strategic Implications:</h6><p>${escapeHtml(data.strategic_implications)}</p>`;
+    }
+    
+    if (data.market_share_risk) {
+        html += `<h6><i class="bi bi-pie-chart me-1"></i>Market Share Risk:</h6><p>${escapeHtml(data.market_share_risk)}</p>`;
+    }
+    
+    if (data.investment_recommendations) {
+        html += '<h6><i class="bi bi-cash me-1"></i>Investment Recommendations:</h6><ul>';
+        data.investment_recommendations.forEach(p => { html += `<li>${escapeHtml(p)}</li>`; });
+        html += '</ul>';
+    }
+    
+    if (data.competitive_response_options) {
+        html += '<h6><i class="bi bi-lightning me-1"></i>Competitive Response Options:</h6><ul>';
+        data.competitive_response_options.forEach(p => { html += `<li>${escapeHtml(p)}</li>`; });
+        html += '</ul>';
+    }
+    
+    container.innerHTML = html;
+}
+
+function renderActions(containerId, actions) {
+    const container = document.getElementById(containerId);
+    if (!actions || actions.length === 0) {
+        container.innerHTML = '<li class="text-muted">No actions defined</li>';
+        return;
+    }
+    
+    let html = '';
+    actions.forEach((action, i) => {
+        html += `<li class="mb-2"><i class="bi bi-check2-circle me-2"></i>${escapeHtml(action)}</li>`;
+    });
+    container.innerHTML = html;
+}
+
+function markAsReviewed() {
+    const name = document.getElementById('reviewer-name').value;
+    const notes = document.getElementById('review-notes').value;
+    
+    fetch(`/api/insights/{{ insight.id }}/review`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reviewed_by: name, notes: notes })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Error marking as reviewed');
+        }
+    });
+}
+
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+</script>
+{% endblock extra_js %}

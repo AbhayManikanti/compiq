@@ -1,0 +1,343 @@
+{% extends "base.html" %}
+
+{% block title %}Feature Comparison Matrix - Competitor Monitor{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2><i class="bi bi-table me-2"></i>Feature Comparison Matrix</h2>
+            <p class="text-muted mb-0">Compare product capabilities across competitors</p>
+        </div>
+        <div class="d-flex gap-2">
+            <select class="form-select" id="filterCategory" style="width: auto;">
+                <option value="">All Categories</option>
+            </select>
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#featureModal">
+                <i class="bi bi-plus-lg"></i> Add Feature
+            </button>
+            <button class="btn btn-outline-secondary" onclick="exportMatrix()">
+                <i class="bi bi-download"></i> Export
+            </button>
+        </div>
+    </div>
+
+    <!-- Legend -->
+    <div class="alert alert-light mb-4">
+        <strong>Capability Legend:</strong>
+        <span class="badge bg-success me-2">Full</span>
+        <span class="badge bg-warning text-dark me-2">Partial</span>
+        <span class="badge bg-info me-2">Planned</span>
+        <span class="badge bg-secondary me-2">None</span>
+        &nbsp;&nbsp;|&nbsp;&nbsp;
+        <strong>Importance:</strong>
+        <span class="text-warning">★★★★★</span> = Critical, 
+        <span class="text-warning">★★★</span> = Important,
+        <span class="text-warning">★</span> = Nice to have
+    </div>
+
+    <!-- Matrix Table -->
+    <div class="card">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover mb-0" id="matrixTable">
+                    <thead class="table-dark">
+                        <tr>
+                            <th style="min-width: 200px;">Feature</th>
+                            <th style="min-width: 80px;" class="text-center">Importance</th>
+                            <th style="min-width: 120px;" class="text-center bg-primary">Our Product</th>
+                            <!-- Competitor columns added dynamically -->
+                        </tr>
+                    </thead>
+                    <tbody id="matrixBody">
+                        <tr>
+                            <td colspan="10" class="text-center py-4">
+                                <div class="spinner-border text-primary" role="status"></div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Feature Modal -->
+<div class="modal fade" id="featureModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-plus-circle me-2"></i>Add Feature Comparison</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="featureForm">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Category *</label>
+                            <input type="text" class="form-control" id="category" list="categoryList" required placeholder="e.g., Accuracy, Connectivity, Safety">
+                            <datalist id="categoryList"></datalist>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Feature Name *</label>
+                            <input type="text" class="form-control" id="featureName" required placeholder="e.g., DC Voltage Accuracy">
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Description</label>
+                        <textarea class="form-control" id="featureDescription" rows="2"></textarea>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Customer Importance (1-10)</label>
+                            <input type="range" class="form-range" id="importance" min="1" max="10" value="5">
+                            <div class="text-center" id="importanceValue">5</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Our Capability</label>
+                            <select class="form-select" id="ourCapability">
+                                <option value="full">Full - Complete implementation</option>
+                                <option value="partial">Partial - Some limitations</option>
+                                <option value="planned">Planned - On roadmap</option>
+                                <option value="none">None - Not available</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Our Details</label>
+                        <input type="text" class="form-control" id="ourDetails" placeholder="Specifics about our implementation...">
+                    </div>
+                    
+                    <hr>
+                    <h6>Competitor Capabilities</h6>
+                    <div id="competitorCapabilities">
+                        <!-- Dynamically populated -->
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="saveFeature()">Save Feature</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let competitors = [];
+let categories = [];
+
+async function loadCompetitors() {
+    competitors = await fetchAPI('/competitors');
+    
+    // Update table header
+    const headerRow = document.querySelector('#matrixTable thead tr');
+    competitors.forEach(c => {
+        const th = document.createElement('th');
+        th.className = 'text-center';
+        th.style.minWidth = '120px';
+        th.innerHTML = `${c.name}`;
+        headerRow.appendChild(th);
+    });
+    
+    // Update modal
+    const container = document.getElementById('competitorCapabilities');
+    container.innerHTML = competitors.map(c => `
+        <div class="row mb-2">
+            <div class="col-md-4">
+                <label class="form-label">${c.name}</label>
+            </div>
+            <div class="col-md-4">
+                <select class="form-select form-select-sm" id="competitor_${c.id}_capability">
+                    <option value="">Unknown</option>
+                    <option value="full">Full</option>
+                    <option value="partial">Partial</option>
+                    <option value="planned">Planned</option>
+                    <option value="none">None</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <input type="text" class="form-control form-control-sm" id="competitor_${c.id}_details" placeholder="Details...">
+            </div>
+        </div>
+    `).join('');
+}
+
+async function loadCategories() {
+    try {
+        categories = await fetchAPI('/features/categories');
+        const datalist = document.getElementById('categoryList');
+        const select = document.getElementById('filterCategory');
+        
+        categories.forEach(cat => {
+            datalist.innerHTML += `<option value="${cat}">`;
+            select.innerHTML += `<option value="${cat}">${cat}</option>`;
+        });
+    } catch (e) {
+        console.log('No categories yet');
+    }
+}
+
+async function loadMatrix() {
+    const category = document.getElementById('filterCategory').value;
+    
+    try {
+        const matrix = await fetchAPI(`/features/matrix${category ? `?category=${category}` : ''}`);
+        renderMatrix(matrix);
+    } catch (error) {
+        document.getElementById('matrixBody').innerHTML = 
+            '<tr><td colspan="10" class="text-center text-muted py-4">No features defined yet. Add your first feature comparison!</td></tr>';
+    }
+}
+
+function renderMatrix(matrix) {
+    const tbody = document.getElementById('matrixBody');
+    
+    if (Object.keys(matrix.categories).length === 0) {
+        tbody.innerHTML = '<tr><td colspan="10" class="text-center text-muted py-4">No features defined yet. Add your first feature comparison!</td></tr>';
+        return;
+    }
+    
+    let html = '';
+    
+    for (const [category, features] of Object.entries(matrix.categories)) {
+        // Category header row
+        html += `
+            <tr class="table-secondary">
+                <td colspan="${3 + competitors.length}">
+                    <strong><i class="bi bi-folder me-2"></i>${category}</strong>
+                </td>
+            </tr>
+        `;
+        
+        // Feature rows
+        features.forEach(feature => {
+            html += `
+                <tr>
+                    <td>
+                        <strong>${feature.name}</strong>
+                        ${feature.description ? `<br><small class="text-muted">${feature.description}</small>` : ''}
+                    </td>
+                    <td class="text-center">
+                        ${renderImportance(feature.importance)}
+                    </td>
+                    <td class="text-center">
+                        ${renderCapability(feature.our_capability, feature.our_details)}
+                    </td>
+                    ${competitors.map(c => {
+                        const compData = feature.competitors[c.id] || {};
+                        return `<td class="text-center">${renderCapability(compData.capability, compData.details)}</td>`;
+                    }).join('')}
+                </tr>
+            `;
+        });
+    }
+    
+    tbody.innerHTML = html;
+}
+
+function renderImportance(level) {
+    const stars = Math.ceil(level / 2);
+    return `<span class="text-warning">${'★'.repeat(stars)}${'☆'.repeat(5-stars)}</span>`;
+}
+
+function renderCapability(capability, details) {
+    const colors = {
+        'full': 'success',
+        'partial': 'warning',
+        'planned': 'info',
+        'none': 'secondary'
+    };
+    
+    const labels = {
+        'full': '✓',
+        'partial': '◐',
+        'planned': '○',
+        'none': '✗'
+    };
+    
+    if (!capability) return '<span class="text-muted">-</span>';
+    
+    let html = `<span class="badge bg-${colors[capability] || 'secondary'}">${labels[capability] || capability}</span>`;
+    if (details) {
+        html += `<br><small class="text-muted">${details}</small>`;
+    }
+    return html;
+}
+
+async function saveFeature() {
+    const data = {
+        category: document.getElementById('category').value,
+        feature_name: document.getElementById('featureName').value,
+        description: document.getElementById('featureDescription').value,
+        customer_importance: parseInt(document.getElementById('importance').value),
+        our_capability: document.getElementById('ourCapability').value,
+        our_details: document.getElementById('ourDetails').value,
+        competitor_capabilities: {}
+    };
+    
+    // Collect competitor data
+    competitors.forEach(c => {
+        const capability = document.getElementById(`competitor_${c.id}_capability`).value;
+        const details = document.getElementById(`competitor_${c.id}_details`).value;
+        if (capability || details) {
+            data.competitor_capabilities[c.id] = { capability, details };
+        }
+    });
+    
+    if (!data.category || !data.feature_name) {
+        showToast('Error', 'Category and feature name are required', 'warning');
+        return;
+    }
+    
+    try {
+        await fetchAPI('/features', {
+            method: 'POST',
+            body: JSON.stringify(data)
+        });
+        
+        bootstrap.Modal.getInstance(document.getElementById('featureModal')).hide();
+        showToast('Success', 'Feature added!', 'success');
+        loadCategories();
+        loadMatrix();
+        document.getElementById('featureForm').reset();
+        document.getElementById('importanceValue').textContent = '5';
+    } catch (error) {
+        showToast('Error', error.message, 'danger');
+    }
+}
+
+function exportMatrix() {
+    window.location.href = '/api/export/features/csv';
+}
+
+// Importance slider update
+document.getElementById('importance').addEventListener('input', function() {
+    document.getElementById('importanceValue').textContent = this.value;
+});
+
+// Initialize
+document.addEventListener('DOMContentLoaded', async () => {
+    await loadCompetitors();
+    await loadCategories();
+    await loadMatrix();
+});
+
+document.getElementById('filterCategory').addEventListener('change', loadMatrix);
+</script>
+
+<style>
+#matrixTable th, #matrixTable td {
+    vertical-align: middle;
+}
+.table-secondary td {
+    font-weight: bold;
+}
+</style>
+{% endblock %}

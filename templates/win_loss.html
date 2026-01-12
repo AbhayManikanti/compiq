@@ -1,0 +1,383 @@
+{% extends "base.html" %}
+
+{% block title %}Win/Loss Analysis - Competitor Monitor{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2><i class="bi bi-trophy me-2"></i>Win/Loss Analysis</h2>
+            <p class="text-muted mb-0">Track and analyze competitive deal outcomes</p>
+        </div>
+        <div class="d-flex gap-2">
+            <select class="form-select" id="filterDays" style="width: auto;">
+                <option value="30">Last 30 days</option>
+                <option value="90" selected>Last 90 days</option>
+                <option value="180">Last 6 months</option>
+                <option value="365">Last year</option>
+            </select>
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#recordModal">
+                <i class="bi bi-plus-lg"></i> Record Outcome
+            </button>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <h3 id="statWins">0</h3>
+                    <p class="mb-0">Wins</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-danger text-white">
+                <div class="card-body">
+                    <h3 id="statLosses">0</h3>
+                    <p class="mb-0">Losses</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <h3 id="statWinRate">0%</h3>
+                    <p class="mb-0">Win Rate</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <h3 id="statValue">$0</h3>
+                    <p class="mb-0">Total Value Won</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Left Column: Records List -->
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Recent Outcomes</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Deal / Customer</th>
+                                    <th>Competitor</th>
+                                    <th>Outcome</th>
+                                    <th>Value</th>
+                                    <th>Reason</th>
+                                </tr>
+                            </thead>
+                            <tbody id="recordsTable">
+                                <tr>
+                                    <td colspan="6" class="text-center py-4">
+                                        <div class="spinner-border text-primary" role="status"></div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column: Analytics -->
+        <div class="col-lg-4">
+            <!-- Loss Reasons -->
+            <div class="card mb-4">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0"><i class="bi bi-graph-down me-2"></i>Top Loss Reasons</h5>
+                </div>
+                <div class="card-body" id="lossReasons">
+                    <div class="spinner-border spinner-border-sm" role="status"></div>
+                </div>
+            </div>
+
+            <!-- By Competitor -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-building me-2"></i>By Competitor</h5>
+                </div>
+                <div class="card-body" id="byCompetitor">
+                    <div class="spinner-border spinner-border-sm" role="status"></div>
+                </div>
+            </div>
+
+            <!-- Key Learnings -->
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0"><i class="bi bi-lightbulb me-2"></i>Key Learnings</h5>
+                </div>
+                <div class="card-body" id="keyLearnings">
+                    <p class="text-muted small">Learnings from recent losses will appear here.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Record Outcome Modal -->
+<div class="modal fade" id="recordModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-trophy me-2"></i>Record Deal Outcome</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="recordForm">
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Outcome *</label>
+                            <select class="form-select" id="outcome" required>
+                                <option value="">Select...</option>
+                                <option value="won">Won</option>
+                                <option value="lost">Lost</option>
+                                <option value="no_decision">No Decision</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Competitor</label>
+                            <select class="form-select" id="competitorId">
+                                <option value="">Select competitor...</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Outcome Date</label>
+                            <input type="date" class="form-control" id="outcomeDate">
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Deal Name</label>
+                            <input type="text" class="form-control" id="dealName" placeholder="e.g., Acme Corp DMM Rollout">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Deal Value ($)</label>
+                            <input type="number" class="form-control" id="dealValue" placeholder="50000">
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Customer Name</label>
+                            <input type="text" class="form-control" id="customerName">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Customer Industry</label>
+                            <input type="text" class="form-control" id="customerIndustry" placeholder="e.g., Manufacturing">
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Customer Size</label>
+                            <select class="form-select" id="customerSize">
+                                <option value="">Select...</option>
+                                <option value="smb">SMB</option>
+                                <option value="mid-market">Mid-Market</option>
+                                <option value="enterprise">Enterprise</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Region</label>
+                            <input type="text" class="form-control" id="customerRegion" placeholder="e.g., North America">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Sales Rep</label>
+                            <input type="text" class="form-control" id="salesRep">
+                        </div>
+                    </div>
+                    
+                    <div id="lossFields" style="display: none;">
+                        <hr>
+                        <h6 class="text-danger">Loss Analysis</h6>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Primary Loss Reason</label>
+                                <select class="form-select" id="primaryLossReason">
+                                    <option value="">Select...</option>
+                                    <option value="price">Price</option>
+                                    <option value="features">Missing Features</option>
+                                    <option value="relationship">Existing Relationship</option>
+                                    <option value="brand">Brand Preference</option>
+                                    <option value="support">Support/Service</option>
+                                    <option value="integration">Integration Issues</option>
+                                    <option value="timing">Bad Timing</option>
+                                    <option value="other">Other</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Competitor Positioning</label>
+                                <input type="text" class="form-control" id="competitorPositioning" placeholder="How did they position?">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Key Learnings</label>
+                        <textarea class="form-control" id="keyLearningsInput" rows="3" placeholder="What did we learn from this outcome?"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="submitRecord()">Save Record</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+async function loadCompetitors() {
+    const competitors = await fetchAPI('/competitors');
+    const select = document.getElementById('competitorId');
+    competitors.forEach(c => {
+        select.innerHTML += `<option value="${c.id}">${c.name}</option>`;
+    });
+}
+
+async function loadStats() {
+    const days = document.getElementById('filterDays').value;
+    
+    try {
+        const stats = await fetchAPI(`/win-loss/stats?days=${days}`);
+        
+        document.getElementById('statWins').textContent = stats.wins;
+        document.getElementById('statLosses').textContent = stats.losses;
+        document.getElementById('statWinRate').textContent = stats.win_rate + '%';
+        document.getElementById('statValue').textContent = '$' + stats.total_won_value.toLocaleString();
+        
+        // Loss reasons
+        const lossReasonsEl = document.getElementById('lossReasons');
+        if (Object.keys(stats.loss_reasons).length > 0) {
+            lossReasonsEl.innerHTML = Object.entries(stats.loss_reasons)
+                .sort((a, b) => b[1] - a[1])
+                .map(([reason, count]) => `
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>${reason.replace('_', ' ')}</span>
+                        <span class="badge bg-danger">${count}</span>
+                    </div>
+                `).join('');
+        } else {
+            lossReasonsEl.innerHTML = '<p class="text-muted small">No loss data available.</p>';
+        }
+    } catch (error) {
+        console.error('Failed to load stats:', error);
+    }
+}
+
+async function loadRecords() {
+    const days = document.getElementById('filterDays').value;
+    
+    try {
+        const records = await fetchAPI(`/win-loss?days=${days}`);
+        const tbody = document.getElementById('recordsTable');
+        
+        if (records.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">No records found. Start by recording a deal outcome.</td></tr>';
+            return;
+        }
+        
+        tbody.innerHTML = records.map(r => `
+            <tr>
+                <td>${r.outcome_date ? new Date(r.outcome_date).toLocaleDateString() : '-'}</td>
+                <td>
+                    <strong>${r.deal_name || 'Unnamed Deal'}</strong><br>
+                    <small class="text-muted">${r.customer_name || '-'}</small>
+                </td>
+                <td>${r.competitor_name || '-'}</td>
+                <td>
+                    <span class="badge bg-${r.outcome === 'won' ? 'success' : (r.outcome === 'lost' ? 'danger' : 'secondary')}">${r.outcome}</span>
+                </td>
+                <td>${r.deal_value ? '$' + r.deal_value.toLocaleString() : '-'}</td>
+                <td>${r.primary_loss_reason || '-'}</td>
+            </tr>
+        `).join('');
+        
+        // Load learnings from losses
+        const losses = records.filter(r => r.outcome === 'lost' && r.key_learnings);
+        const learningsEl = document.getElementById('keyLearnings');
+        if (losses.length > 0) {
+            learningsEl.innerHTML = losses.slice(0, 5).map(l => `
+                <div class="border-bottom pb-2 mb-2">
+                    <small class="text-muted">${l.deal_name || l.customer_name}</small>
+                    <p class="small mb-0">${l.key_learnings}</p>
+                </div>
+            `).join('');
+        }
+    } catch (error) {
+        console.error('Failed to load records:', error);
+    }
+}
+
+async function submitRecord() {
+    const data = {
+        outcome: document.getElementById('outcome').value,
+        competitor_id: document.getElementById('competitorId').value || null,
+        outcome_date: document.getElementById('outcomeDate').value,
+        deal_name: document.getElementById('dealName').value,
+        deal_value: parseFloat(document.getElementById('dealValue').value) || null,
+        customer_name: document.getElementById('customerName').value,
+        customer_industry: document.getElementById('customerIndustry').value,
+        customer_size: document.getElementById('customerSize').value,
+        customer_region: document.getElementById('customerRegion').value,
+        sales_rep: document.getElementById('salesRep').value,
+        primary_loss_reason: document.getElementById('primaryLossReason').value,
+        competitor_positioning: document.getElementById('competitorPositioning').value,
+        key_learnings: document.getElementById('keyLearningsInput').value
+    };
+    
+    if (!data.outcome) {
+        showToast('Error', 'Outcome is required', 'warning');
+        return;
+    }
+    
+    try {
+        await fetchAPI('/win-loss', {
+            method: 'POST',
+            body: JSON.stringify(data)
+        });
+        
+        bootstrap.Modal.getInstance(document.getElementById('recordModal')).hide();
+        showToast('Success', 'Record saved!', 'success');
+        loadStats();
+        loadRecords();
+        document.getElementById('recordForm').reset();
+    } catch (error) {
+        showToast('Error', error.message, 'danger');
+    }
+}
+
+// Show/hide loss fields based on outcome
+document.getElementById('outcome').addEventListener('change', function() {
+    document.getElementById('lossFields').style.display = this.value === 'lost' ? 'block' : 'none';
+});
+
+// Initialize
+document.addEventListener('DOMContentLoaded', () => {
+    loadCompetitors();
+    loadStats();
+    loadRecords();
+});
+
+document.getElementById('filterDays').addEventListener('change', () => {
+    loadStats();
+    loadRecords();
+});
+</script>
+{% endblock %}

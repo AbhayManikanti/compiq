@@ -1,0 +1,393 @@
+# Competitive Response Playbooks
+# These playbooks define standardized response actions for different types of competitive signals
+
+playbooks:
+  # =============================================================================
+  # PRODUCT-RELATED PLAYBOOKS
+  # =============================================================================
+  
+  product_launch:
+    name: "Competitor Product Launch"
+    description: "A competitor has announced or launched a new product"
+    urgency: high
+    actions:
+      - action: "Obtain product specifications and documentation"
+        owner: "Competitive Intelligence"
+        priority: high
+        timeline: "24-48 hours"
+        
+      - action: "Conduct technical comparison with Fluke equivalent"
+        owner: "Product Management"
+        priority: high
+        timeline: "1 week"
+        
+      - action: "Analyze pricing and positioning strategy"
+        owner: "Pricing Team"
+        priority: high
+        timeline: "48 hours"
+        
+      - action: "Assess impact on current deals in pipeline"
+        owner: "Sales Operations"
+        priority: high
+        timeline: "48 hours"
+        
+      - action: "Update competitive battle cards"
+        owner: "Sales Enablement"
+        priority: medium
+        timeline: "1 week"
+        
+      - action: "Prepare sales team talking points"
+        owner: "Sales Enablement"
+        priority: medium
+        timeline: "1 week"
+        
+      - action: "Monitor customer and market reaction"
+        owner: "Marketing"
+        priority: medium
+        timeline: "Ongoing"
+        
+      - action: "Consider accelerating Fluke product roadmap if needed"
+        owner: "Product Management"
+        priority: low
+        timeline: "2 weeks"
+
+  feature_update:
+    name: "Competitor Feature Update"
+    description: "A competitor has added new features or capabilities to existing products"
+    urgency: medium
+    actions:
+      - action: "Document new feature details and specifications"
+        owner: "Competitive Intelligence"
+        priority: high
+        timeline: "24 hours"
+        
+      - action: "Compare with Fluke current and roadmap features"
+        owner: "Product Management"
+        priority: medium
+        timeline: "1 week"
+        
+      - action: "Assess customer impact and demand for similar features"
+        owner: "Customer Success"
+        priority: medium
+        timeline: "1 week"
+        
+      - action: "Update product comparison materials"
+        owner: "Marketing"
+        priority: medium
+        timeline: "2 weeks"
+
+  # =============================================================================
+  # PRICING PLAYBOOKS
+  # =============================================================================
+  
+  pricing_change:
+    name: "Competitor Pricing Change"
+    description: "A competitor has changed their pricing structure"
+    urgency: high
+    actions:
+      - action: "Validate pricing information from multiple sources"
+        owner: "Competitive Intelligence"
+        priority: high
+        timeline: "24 hours"
+        
+      - action: "Analyze price changes across product portfolio"
+        owner: "Pricing Team"
+        priority: high
+        timeline: "48 hours"
+        
+      - action: "Model impact on competitive win rates"
+        owner: "Sales Operations"
+        priority: high
+        timeline: "1 week"
+        
+      - action: "Review Fluke pricing strategy in affected segments"
+        owner: "Pricing Team"
+        priority: medium
+        timeline: "2 weeks"
+        
+      - action: "Prepare sales team guidance on price objections"
+        owner: "Sales Enablement"
+        priority: medium
+        timeline: "1 week"
+        
+      - action: "Monitor deal velocity and win/loss trends"
+        owner: "Sales Operations"
+        priority: medium
+        timeline: "Ongoing"
+
+  # =============================================================================
+  # STRATEGIC PLAYBOOKS
+  # =============================================================================
+  
+  partnership:
+    name: "Competitor Partnership/Alliance"
+    description: "A competitor has announced a strategic partnership"
+    urgency: medium
+    actions:
+      - action: "Research partnership terms and scope"
+        owner: "Competitive Intelligence"
+        priority: high
+        timeline: "48 hours"
+        
+      - action: "Assess strategic implications for Fluke"
+        owner: "Strategy"
+        priority: high
+        timeline: "1 week"
+        
+      - action: "Evaluate channel and distribution impact"
+        owner: "Channel Sales"
+        priority: medium
+        timeline: "1 week"
+        
+      - action: "Identify potential counter-partnership opportunities"
+        owner: "Business Development"
+        priority: medium
+        timeline: "2 weeks"
+        
+      - action: "Brief executive team if significant"
+        owner: "Competitive Intelligence"
+        priority: medium
+        timeline: "1 week"
+
+  acquisition:
+    name: "Competitor Acquisition/Merger"
+    description: "A competitor is acquiring or merging with another company"
+    urgency: high
+    actions:
+      - action: "Gather all available deal information"
+        owner: "Competitive Intelligence"
+        priority: high
+        timeline: "24 hours"
+        
+      - action: "Analyze strategic rationale and synergies"
+        owner: "Strategy"
+        priority: high
+        timeline: "1 week"
+        
+      - action: "Assess market consolidation impact"
+        owner: "Strategy"
+        priority: high
+        timeline: "1 week"
+        
+      - action: "Identify customer retention opportunities"
+        owner: "Sales"
+        priority: high
+        timeline: "1 week"
+        
+      - action: "Prepare executive briefing"
+        owner: "Competitive Intelligence"
+        priority: high
+        timeline: "48 hours"
+        
+      - action: "Monitor integration progress and challenges"
+        owner: "Competitive Intelligence"
+        priority: low
+        timeline: "Ongoing"
+        
+      - action: "Identify potential talent acquisition opportunities"
+        owner: "HR"
+        priority: low
+        timeline: "1 month"
+
+  leadership_change:
+    name: "Competitor Leadership Change"
+    description: "Key executive change at a competitor"
+    urgency: low
+    actions:
+      - action: "Research new executive background and history"
+        owner: "Competitive Intelligence"
+        priority: medium
+        timeline: "1 week"
+        
+      - action: "Analyze potential strategic direction changes"
+        owner: "Strategy"
+        priority: medium
+        timeline: "2 weeks"
+        
+      - action: "Monitor for strategy announcements"
+        owner: "Competitive Intelligence"
+        priority: low
+        timeline: "Ongoing"
+
+  # =============================================================================
+  # MARKETING PLAYBOOKS
+  # =============================================================================
+  
+  marketing_campaign:
+    name: "Competitor Marketing Campaign"
+    description: "A competitor has launched a significant marketing initiative"
+    urgency: low
+    actions:
+      - action: "Document campaign messaging and positioning"
+        owner: "Marketing"
+        priority: medium
+        timeline: "48 hours"
+        
+      - action: "Analyze target audience and channels"
+        owner: "Marketing"
+        priority: medium
+        timeline: "1 week"
+        
+      - action: "Assess competitive threat to Fluke messaging"
+        owner: "Marketing"
+        priority: medium
+        timeline: "1 week"
+        
+      - action: "Consider response or counter-campaign"
+        owner: "Marketing"
+        priority: low
+        timeline: "2 weeks"
+
+  # =============================================================================
+  # OPERATIONAL PLAYBOOKS
+  # =============================================================================
+  
+  expansion:
+    name: "Competitor Geographic/Market Expansion"
+    description: "A competitor is expanding into new regions or market segments"
+    urgency: medium
+    actions:
+      - action: "Research expansion details and scope"
+        owner: "Competitive Intelligence"
+        priority: high
+        timeline: "48 hours"
+        
+      - action: "Assess impact on Fluke's position in region/segment"
+        owner: "Regional Sales"
+        priority: high
+        timeline: "1 week"
+        
+      - action: "Review Fluke's expansion plans for conflict"
+        owner: "Strategy"
+        priority: medium
+        timeline: "2 weeks"
+        
+      - action: "Strengthen customer relationships in affected areas"
+        owner: "Sales"
+        priority: medium
+        timeline: "Ongoing"
+
+  certification:
+    name: "Competitor Certification/Approval"
+    description: "A competitor has obtained a new certification or regulatory approval"
+    urgency: medium
+    actions:
+      - action: "Document certification details and scope"
+        owner: "Competitive Intelligence"
+        priority: high
+        timeline: "24 hours"
+        
+      - action: "Compare with Fluke's certification status"
+        owner: "Regulatory Affairs"
+        priority: high
+        timeline: "48 hours"
+        
+      - action: "Assess market access implications"
+        owner: "Sales"
+        priority: medium
+        timeline: "1 week"
+        
+      - action: "Accelerate Fluke certification if gap exists"
+        owner: "Regulatory Affairs"
+        priority: medium
+        timeline: "As needed"
+
+  regulatory:
+    name: "Regulatory/Compliance Update"
+    description: "Regulatory change affecting competitive landscape"
+    urgency: varies
+    actions:
+      - action: "Analyze regulatory change details"
+        owner: "Regulatory Affairs"
+        priority: high
+        timeline: "48 hours"
+        
+      - action: "Assess impact on Fluke products and compliance"
+        owner: "Regulatory Affairs"
+        priority: high
+        timeline: "1 week"
+        
+      - action: "Evaluate competitive advantage/disadvantage"
+        owner: "Strategy"
+        priority: medium
+        timeline: "1 week"
+        
+      - action: "Update product roadmap if needed"
+        owner: "Product Management"
+        priority: medium
+        timeline: "2 weeks"
+
+  # =============================================================================
+  # DEFAULT PLAYBOOK
+  # =============================================================================
+  
+  default:
+    name: "General Competitive Update"
+    description: "General competitive intelligence requiring assessment"
+    urgency: low
+    actions:
+      - action: "Document and categorize the intelligence"
+        owner: "Competitive Intelligence"
+        priority: medium
+        timeline: "24 hours"
+        
+      - action: "Assess relevance and potential impact on Fluke"
+        owner: "Competitive Intelligence"
+        priority: medium
+        timeline: "48 hours"
+        
+      - action: "Route to appropriate stakeholders if needed"
+        owner: "Competitive Intelligence"
+        priority: low
+        timeline: "1 week"
+        
+      - action: "Archive for future reference"
+        owner: "Competitive Intelligence"
+        priority: low
+        timeline: "1 week"
+
+# =============================================================================
+# SIGNAL TYPE TO PLAYBOOK MAPPING
+# =============================================================================
+
+signal_mapping:
+  product_launch: product_launch
+  pricing_change: pricing_change
+  feature_update: feature_update
+  partnership: partnership
+  acquisition: acquisition
+  leadership_change: leadership_change
+  marketing_campaign: marketing_campaign
+  certification: certification
+  expansion: expansion
+  regulatory: regulatory
+  other: default
+
+# =============================================================================
+# ESCALATION RULES
+# =============================================================================
+
+escalation:
+  critical_risk:
+    notify:
+      - "VP Competitive Intelligence"
+      - "Chief Marketing Officer"
+      - "EVP Sales"
+    timeline: "Immediate"
+    
+  high_risk:
+    notify:
+      - "Director Competitive Intelligence"
+      - "Regional Sales Directors"
+    timeline: "Same day"
+    
+  medium_risk:
+    notify:
+      - "Competitive Intelligence Team"
+      - "Product Managers"
+    timeline: "24 hours"
+    
+  low_risk:
+    notify:
+      - "Competitive Intelligence Team"
+    timeline: "Weekly digest"

@@ -1,0 +1,406 @@
+{% extends "base.html" %}
+
+{% block title %}Tracked Accounts - Competitor Monitor{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2><i class="bi bi-buildings me-2"></i>Tracked Accounts</h2>
+            <p class="text-muted mb-0">Account-based competitive intelligence tracking</p>
+        </div>
+        <div class="d-flex gap-2">
+            <select class="form-select" id="filterTier" style="width: auto;">
+                <option value="">All Tiers</option>
+                <option value="strategic">Strategic</option>
+                <option value="key">Key</option>
+                <option value="standard">Standard</option>
+            </select>
+            <select class="form-select" id="filterStage" style="width: auto;">
+                <option value="">All Stages</option>
+                <option value="prospect">Prospect</option>
+                <option value="qualified">Qualified</option>
+                <option value="proposal">Proposal</option>
+                <option value="negotiation">Negotiation</option>
+            </select>
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#accountModal">
+                <i class="bi bi-plus-lg"></i> Add Account
+            </button>
+        </div>
+    </div>
+
+    <!-- Stats Row -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body text-center">
+                    <h3 class="text-primary" id="totalAccounts">0</h3>
+                    <small class="text-muted">Total Accounts</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body text-center">
+                    <h3 class="text-success" id="strategicAccounts">0</h3>
+                    <small class="text-muted">Strategic Accounts</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body text-center">
+                    <h3 class="text-warning" id="displacementDeals">0</h3>
+                    <small class="text-muted">Displacement Opportunities</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body text-center">
+                    <h3 class="text-info" id="totalPipeline">$0</h3>
+                    <small class="text-muted">Total Pipeline</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Accounts Table -->
+    <div class="card">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Account</th>
+                            <th>Tier</th>
+                            <th>Stage</th>
+                            <th>Incumbent</th>
+                            <th>Status</th>
+                            <th>Value</th>
+                            <th>Owner</th>
+                            <th>Last Activity</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="accountsTable">
+                        <tr>
+                            <td colspan="9" class="text-center py-4">
+                                <div class="spinner-border text-primary" role="status"></div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Account Modal -->
+<div class="modal fade" id="accountModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-buildings me-2"></i>Add Tracked Account</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="accountForm">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Account Name *</label>
+                            <input type="text" class="form-control" id="accountName" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Website</label>
+                            <input type="url" class="form-control" id="website" placeholder="https://...">
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Industry</label>
+                            <input type="text" class="form-control" id="industry">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Size</label>
+                            <select class="form-select" id="size">
+                                <option value="">Select...</option>
+                                <option value="smb">SMB</option>
+                                <option value="mid-market">Mid-Market</option>
+                                <option value="enterprise">Enterprise</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Region</label>
+                            <input type="text" class="form-control" id="region">
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Account Tier</label>
+                            <select class="form-select" id="accountTier">
+                                <option value="standard">Standard</option>
+                                <option value="key">Key</option>
+                                <option value="strategic">Strategic</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Deal Stage</label>
+                            <select class="form-select" id="dealStage">
+                                <option value="">Select...</option>
+                                <option value="prospect">Prospect</option>
+                                <option value="qualified">Qualified</option>
+                                <option value="proposal">Proposal</option>
+                                <option value="negotiation">Negotiation</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Deal Value ($)</label>
+                            <input type="number" class="form-control" id="dealValue">
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Incumbent Competitor</label>
+                            <select class="form-select" id="incumbentCompetitor">
+                                <option value="">None / Greenfield</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Competitive Status</label>
+                            <select class="form-select" id="competitiveStatus">
+                                <option value="">Select...</option>
+                                <option value="greenfield">Greenfield (No incumbent)</option>
+                                <option value="displacement">Displacement (Replace competitor)</option>
+                                <option value="retention">Retention (Keep existing)</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Account Owner</label>
+                        <input type="text" class="form-control" id="accountOwner">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Notes</label>
+                        <textarea class="form-control" id="notes" rows="3"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="createAccount()">Add Account</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Log Activity Modal -->
+<div class="modal fade" id="activityModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-journal-plus me-2"></i>Log Activity</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="activityForm">
+                    <input type="hidden" id="activityAccountId">
+                    <div class="mb-3">
+                        <label class="form-label">Activity Type</label>
+                        <select class="form-select" id="activityType" required>
+                            <option value="meeting">Meeting</option>
+                            <option value="email">Email</option>
+                            <option value="call">Call</option>
+                            <option value="intel">Competitive Intel</option>
+                            <option value="competitor_mention">Competitor Mention</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Description</label>
+                        <textarea class="form-control" id="activityDescription" rows="3"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Competitor Mentioned</label>
+                        <select class="form-select" id="activityCompetitor">
+                            <option value="">None</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Competitive Insight</label>
+                        <textarea class="form-control" id="activityInsight" rows="2" placeholder="Any competitive intel gathered..."></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="logActivity()">Log Activity</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let allAccounts = [];
+
+async function loadCompetitors() {
+    const competitors = await fetchAPI('/competitors');
+    ['incumbentCompetitor', 'activityCompetitor'].forEach(id => {
+        const select = document.getElementById(id);
+        competitors.forEach(c => {
+            select.innerHTML += `<option value="${c.id}">${c.name}</option>`;
+        });
+    });
+}
+
+async function loadAccounts() {
+    const tier = document.getElementById('filterTier').value;
+    const stage = document.getElementById('filterStage').value;
+    
+    let url = '/api/accounts?';
+    if (tier) url += `tier=${tier}&`;
+    if (stage) url += `stage=${stage}`;
+    
+    try {
+        const accounts = await fetchAPI(url.replace('/api', ''));
+        allAccounts = accounts;
+        renderAccounts(accounts);
+        updateStats(accounts);
+    } catch (error) {
+        document.getElementById('accountsTable').innerHTML = 
+            '<tr><td colspan="9" class="text-center text-muted py-4">No accounts found. Add your first tracked account!</td></tr>';
+    }
+}
+
+function renderAccounts(accounts) {
+    const tbody = document.getElementById('accountsTable');
+    
+    if (accounts.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted py-4">No accounts found. Add your first tracked account!</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = accounts.map(a => `
+        <tr>
+            <td>
+                <strong>${a.account_name}</strong>
+                ${a.website ? `<br><small class="text-muted">${a.website}</small>` : ''}
+            </td>
+            <td>
+                <span class="badge bg-${a.account_tier === 'strategic' ? 'danger' : (a.account_tier === 'key' ? 'warning' : 'secondary')}">${a.account_tier}</span>
+            </td>
+            <td>
+                <span class="badge bg-${a.deal_stage === 'negotiation' ? 'success' : (a.deal_stage === 'proposal' ? 'primary' : 'info')}">${a.deal_stage || '-'}</span>
+            </td>
+            <td>${a.incumbent_name || '<span class="text-success">Greenfield</span>'}</td>
+            <td>
+                <span class="badge bg-${a.competitive_status === 'displacement' ? 'warning' : (a.competitive_status === 'retention' ? 'info' : 'success')}">${a.competitive_status || '-'}</span>
+            </td>
+            <td>${a.deal_value ? '$' + a.deal_value.toLocaleString() : '-'}</td>
+            <td>${a.account_owner || '-'}</td>
+            <td><small>${a.last_activity_at ? new Date(a.last_activity_at).toLocaleDateString() : 'Never'}</small></td>
+            <td>
+                <div class="btn-group btn-group-sm">
+                    <a href="/accounts/${a.id}" class="btn btn-outline-primary" title="View Details">
+                        <i class="bi bi-eye"></i>
+                    </a>
+                    <button class="btn btn-outline-success" onclick="showActivityModal(${a.id})" title="Log Activity">
+                        <i class="bi bi-journal-plus"></i>
+                    </button>
+                </div>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function updateStats(accounts) {
+    document.getElementById('totalAccounts').textContent = accounts.length;
+    document.getElementById('strategicAccounts').textContent = accounts.filter(a => a.account_tier === 'strategic').length;
+    document.getElementById('displacementDeals').textContent = accounts.filter(a => a.competitive_status === 'displacement').length;
+    
+    const totalPipeline = accounts.reduce((sum, a) => sum + (a.deal_value || 0), 0);
+    document.getElementById('totalPipeline').textContent = '$' + totalPipeline.toLocaleString();
+}
+
+async function createAccount() {
+    const data = {
+        account_name: document.getElementById('accountName').value,
+        website: document.getElementById('website').value,
+        industry: document.getElementById('industry').value,
+        size: document.getElementById('size').value,
+        region: document.getElementById('region').value,
+        account_tier: document.getElementById('accountTier').value,
+        deal_stage: document.getElementById('dealStage').value,
+        deal_value: parseFloat(document.getElementById('dealValue').value) || null,
+        incumbent_competitor_id: document.getElementById('incumbentCompetitor').value || null,
+        competitive_status: document.getElementById('competitiveStatus').value,
+        account_owner: document.getElementById('accountOwner').value,
+        notes: document.getElementById('notes').value
+    };
+    
+    if (!data.account_name) {
+        showToast('Error', 'Account name is required', 'warning');
+        return;
+    }
+    
+    try {
+        await fetchAPI('/accounts', {
+            method: 'POST',
+            body: JSON.stringify(data)
+        });
+        
+        bootstrap.Modal.getInstance(document.getElementById('accountModal')).hide();
+        showToast('Success', 'Account added!', 'success');
+        loadAccounts();
+        document.getElementById('accountForm').reset();
+    } catch (error) {
+        showToast('Error', error.message, 'danger');
+    }
+}
+
+function showActivityModal(accountId) {
+    document.getElementById('activityAccountId').value = accountId;
+    new bootstrap.Modal(document.getElementById('activityModal')).show();
+}
+
+async function logActivity() {
+    const accountId = document.getElementById('activityAccountId').value;
+    const data = {
+        activity_type: document.getElementById('activityType').value,
+        description: document.getElementById('activityDescription').value,
+        competitor_mentioned: document.getElementById('activityCompetitor').value || null,
+        competitive_insight: document.getElementById('activityInsight').value
+    };
+    
+    try {
+        await fetchAPI(`/accounts/${accountId}/activities`, {
+            method: 'POST',
+            body: JSON.stringify(data)
+        });
+        
+        bootstrap.Modal.getInstance(document.getElementById('activityModal')).hide();
+        showToast('Success', 'Activity logged!', 'success');
+        loadAccounts();
+        document.getElementById('activityForm').reset();
+    } catch (error) {
+        showToast('Error', error.message, 'danger');
+    }
+}
+
+// Initialize
+document.addEventListener('DOMContentLoaded', () => {
+    loadCompetitors();
+    loadAccounts();
+});
+
+document.getElementById('filterTier').addEventListener('change', loadAccounts);
+document.getElementById('filterStage').addEventListener('change', loadAccounts);
+</script>
+{% endblock %}

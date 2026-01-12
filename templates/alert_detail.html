@@ -1,0 +1,375 @@
+{% extends "base.html" %}
+
+{% block title %}{{ alert.title }} - Competitor Monitor{% endblock %}
+{% block page_title %}Alert Details{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Main Content -->
+    <div class="col-lg-8">
+        <!-- Alert Header -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <div>
+                        <h4 class="mb-1">{{ alert.title }}</h4>
+                        <p class="text-muted mb-0">
+                            <i class="bi bi-building"></i> {{ alert.competitor.name if alert.competitor else 'Unknown' }} &bull;
+                            <i class="bi bi-clock"></i> {{ alert.detected_at.strftime('%Y-%m-%d %H:%M UTC') if alert.detected_at else 'Unknown' }}
+                        </p>
+                    </div>
+                    <div class="text-end">
+                        <span class="badge badge-{{ alert.risk_level }} fs-6">{{ alert.risk_level.upper() if alert.risk_level else 'UNKNOWN' }}</span>
+                        <div class="mt-2">
+                            <small class="text-muted">Risk Score: {{ alert.risk_score }}/100</small>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Status and Actions -->
+                <div class="d-flex justify-content-between align-items-center border-top pt-3">
+                    <div>
+                        <span class="badge {{ 'bg-danger' if alert.status == 'new' else 'bg-secondary' }} me-2">
+                            {{ alert.status.replace('_', ' ').title() }}
+                        </span>
+                        <span class="badge bg-info">{{ alert.signal_type.replace('_', ' ').title() if alert.signal_type else 'Unknown' }}</span>
+                        <span class="badge bg-secondary">Confidence: {{ alert.confidence_score }}%</span>
+                    </div>
+                    <div class="btn-group">
+                        {% if alert.status == 'new' %}
+                        <button class="btn btn-outline-primary" onclick="acknowledgeAlert()">
+                            <i class="bi bi-check"></i> Acknowledge
+                        </button>
+                        {% endif %}
+                        {% if alert.status != 'resolved' %}
+                        <button class="btn btn-outline-success" onclick="resolveAlert()">
+                            <i class="bi bi-check-all"></i> Resolve
+                        </button>
+                        {% endif %}
+                        <a href="{{ alert.source_url }}" target="_blank" class="btn btn-outline-secondary">
+                            <i class="bi bi-box-arrow-up-right"></i> View Source
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Summary -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="bi bi-file-text"></i> Summary</h6>
+            </div>
+            <div class="card-body">
+                <p>{{ alert.summary }}</p>
+            </div>
+        </div>
+        
+        <!-- Relevance to Fluke -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="bi bi-bullseye"></i> Relevance to Fluke</h6>
+            </div>
+            <div class="card-body">
+                <p>{{ alert.relevance_explanation or 'No relevance analysis available.' }}</p>
+            </div>
+        </div>
+        
+        <!-- Recommended Actions -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="bi bi-list-check"></i> Recommended Actions</h6>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Action</th>
+                                <th>Owner</th>
+                                <th>Priority</th>
+                            </tr>
+                        </thead>
+                        <tbody id="actionsTable">
+                            <tr>
+                                <td colspan="3" class="text-center text-muted">Loading...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Assumptions -->
+        {% if alert.assumptions %}
+        <div class="card mb-4">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="bi bi-question-circle"></i> Assumptions Made</h6>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-warning mb-0">
+                    {{ alert.assumptions | safe }}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        
+        <!-- Raw Content / Diff -->
+        {% if alert.diff_content %}
+        <div class="card mb-4">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="bi bi-file-diff"></i> Changes Detected</h6>
+            </div>
+            <div class="card-body">
+                <pre class="bg-light p-3 rounded" style="max-height: 400px; overflow-y: auto;">{{ alert.diff_content }}</pre>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    
+    <!-- Sidebar -->
+    <div class="col-lg-4">
+        <!-- Quick Info -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h6 class="mb-0">Quick Info</h6>
+            </div>
+            <div class="card-body">
+                <table class="table table-sm table-borderless mb-0">
+                    <tr>
+                        <td class="text-muted">Alert ID</td>
+                        <td class="text-end">#{{ alert.id }}</td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">Source Type</td>
+                        <td class="text-end">{{ alert.source_type.replace('_', ' ').title() if alert.source_type else 'Unknown' }}</td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">Playbook Used</td>
+                        <td class="text-end">{{ alert.playbook_used or 'None' }}</td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">Detected</td>
+                        <td class="text-end">{{ alert.detected_at.strftime('%b %d, %Y') if alert.detected_at else 'Unknown' }}</td>
+                    </tr>
+                    {% if alert.acknowledged_at %}
+                    <tr>
+                        <td class="text-muted">Acknowledged</td>
+                        <td class="text-end">{{ alert.acknowledged_at.strftime('%b %d, %Y') }}</td>
+                    </tr>
+                    {% endif %}
+                    {% if alert.resolved_at %}
+                    <tr>
+                        <td class="text-muted">Resolved</td>
+                        <td class="text-end">{{ alert.resolved_at.strftime('%b %d, %Y') }}</td>
+                    </tr>
+                    {% endif %}
+                    <tr>
+                        <td class="text-muted">Assigned To</td>
+                        <td class="text-end">{{ alert.assigned_to or 'Unassigned' }}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Assignment -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h6 class="mb-0">Assignment</h6>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label">Assign To</label>
+                    <input type="text" class="form-control" id="assignTo" value="{{ alert.assigned_to or '' }}" placeholder="Enter name or email">
+                </div>
+                <button class="btn btn-primary btn-sm w-100" onclick="updateAssignment()">
+                    <i class="bi bi-person-check"></i> Update Assignment
+                </button>
+            </div>
+        </div>
+        
+        <!-- Resolution Notes -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h6 class="mb-0">Resolution Notes</h6>
+            </div>
+            <div class="card-body">
+                <textarea class="form-control mb-3" id="resolutionNotes" rows="4" placeholder="Add notes about how this was resolved...">{{ alert.resolution_notes or '' }}</textarea>
+                <button class="btn btn-outline-secondary btn-sm w-100" onclick="saveNotes()">
+                    <i class="bi bi-save"></i> Save Notes
+                </button>
+            </div>
+        </div>
+        
+        <!-- Related Alerts -->
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0">Related Alerts</h6>
+            </div>
+            <div class="card-body" id="relatedAlerts">
+                <p class="text-muted text-center mb-0">Loading...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Resolve Modal -->
+<div class="modal fade" id="resolveModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Resolve Alert</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">Resolution Notes</label>
+                    <textarea class="form-control" id="modalResolutionNotes" rows="4" placeholder="Describe how this alert was handled..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-success" onclick="confirmResolve()">
+                    <i class="bi bi-check-all"></i> Resolve Alert
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const alertId = {{ alert.id }};
+
+async function loadActions() {
+    try {
+        const alert = await fetchAPI(`/alerts/${alertId}`);
+        const actions = alert.recommended_actions || [];
+        
+        const tbody = document.getElementById('actionsTable');
+        
+        if (actions.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted">No actions recommended</td></tr>';
+            return;
+        }
+        
+        let html = '';
+        for (const action of actions) {
+            const priorityClass = {
+                'high': 'text-danger',
+                'medium': 'text-warning',
+                'low': 'text-success'
+            }[action.priority] || 'text-muted';
+            
+            html += `
+                <tr>
+                    <td>${action.action}</td>
+                    <td>${action.owner || 'TBD'}</td>
+                    <td><span class="${priorityClass}">${(action.priority || 'medium').toUpperCase()}</span></td>
+                </tr>
+            `;
+        }
+        
+        tbody.innerHTML = html;
+    } catch (error) {
+        console.error('Error loading actions:', error);
+    }
+}
+
+async function loadRelatedAlerts() {
+    try {
+        const data = await fetchAPI(`/alerts?competitor_id={{ alert.competitor_id }}&days=30&per_page=5`);
+        const container = document.getElementById('relatedAlerts');
+        
+        const related = data.alerts.filter(a => a.id !== alertId);
+        
+        if (related.length === 0) {
+            container.innerHTML = '<p class="text-muted text-center mb-0">No related alerts</p>';
+            return;
+        }
+        
+        let html = '<div class="list-group list-group-flush">';
+        for (const alert of related) {
+            html += `
+                <a href="/alerts/${alert.id}" class="list-group-item list-group-item-action py-2 px-0">
+                    <div class="d-flex justify-content-between">
+                        <small>${alert.title.substring(0, 30)}...</small>
+                        <span class="badge badge-${alert.risk_level}">${alert.risk_level}</span>
+                    </div>
+                    <small class="text-muted">${formatDate(alert.detected_at)}</small>
+                </a>
+            `;
+        }
+        html += '</div>';
+        
+        container.innerHTML = html;
+    } catch (error) {
+        console.error('Error loading related alerts:', error);
+    }
+}
+
+async function acknowledgeAlert() {
+    try {
+        await fetchAPI(`/alerts/${alertId}/acknowledge`, { method: 'POST' });
+        showToast('Success', 'Alert acknowledged', 'success');
+        location.reload();
+    } catch (error) {
+        showToast('Error', 'Failed to acknowledge alert', 'error');
+    }
+}
+
+function resolveAlert() {
+    const modal = new bootstrap.Modal(document.getElementById('resolveModal'));
+    modal.show();
+}
+
+async function confirmResolve() {
+    const notes = document.getElementById('modalResolutionNotes').value;
+    
+    try {
+        await fetchAPI(`/alerts/${alertId}/resolve`, {
+            method: 'POST',
+            body: JSON.stringify({ notes: notes })
+        });
+        showToast('Success', 'Alert resolved', 'success');
+        location.reload();
+    } catch (error) {
+        showToast('Error', 'Failed to resolve alert', 'error');
+    }
+}
+
+async function updateAssignment() {
+    const assignTo = document.getElementById('assignTo').value;
+    
+    try {
+        await fetchAPI(`/alerts/${alertId}`, {
+            method: 'PATCH',
+            body: JSON.stringify({ assigned_to: assignTo })
+        });
+        showToast('Success', 'Assignment updated', 'success');
+    } catch (error) {
+        showToast('Error', 'Failed to update assignment', 'error');
+    }
+}
+
+async function saveNotes() {
+    const notes = document.getElementById('resolutionNotes').value;
+    
+    try {
+        await fetchAPI(`/alerts/${alertId}`, {
+            method: 'PATCH',
+            body: JSON.stringify({ resolution_notes: notes })
+        });
+        showToast('Success', 'Notes saved', 'success');
+    } catch (error) {
+        showToast('Error', 'Failed to save notes', 'error');
+    }
+}
+
+// Initialize
+document.addEventListener('DOMContentLoaded', () => {
+    loadActions();
+    loadRelatedAlerts();
+});
+</script>
+{% endblock %}

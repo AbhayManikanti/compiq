@@ -1,0 +1,96 @@
+# Competitor Configuration
+# Define the competitors and URLs to monitor
+# Our Company: Fluke Corporation
+
+competitors:
+  # Hioki - Primary Competitor
+  - name: "Hioki"
+    description: "Japanese test and measurement equipment manufacturer. Major competitor in digital multimeters, clamp meters, power analyzers, and insulation testers."
+    website: "https://www.hioki.com"
+    urls:
+      - url: "https://www.hioki.com/global/products/testers"
+        name: "Handheld Digital Multimeters (DMMs)"
+        type: "product_page"
+        check_interval_hours: 24
+        
+      - url: "https://www.hioki.com/global/products/clamp-meters"
+        name: "Clamp Meters"
+        type: "product_page"
+        check_interval_hours: 24
+        
+      - url: "https://www.hioki.com/global/products/insulation-testers"
+        name: "Insulation Testers / Megohmmeters"
+        type: "product_page"
+        check_interval_hours: 24
+        
+      - url: "https://www.hioki.com/global/products/power-meters"
+        name: "Power Meters / Power Analyzers"
+        type: "product_page"
+        check_interval_hours: 24
+        
+      - url: "https://www.hioki.com/global/products/benchtop-dmm"
+        name: "Benchtop Digital Multimeters"
+        type: "product_page"
+        check_interval_hours: 24
+        
+      - url: "https://www.hioki.com/global/products/resistance-meters"
+        name: "Resistance Meters / Battery Testers"
+        type: "product_page"
+        check_interval_hours: 24
+        
+      - url: "https://www.hioki.com/global/products/new"
+        name: "New Products"
+        type: "product_page"
+        check_interval_hours: 12
+        
+      - url: "https://www.hioki.com/global/news"
+        name: "Newsroom"
+        type: "news_page"
+        check_interval_hours: 12
+
+# News Sources
+# RSS feeds and search terms for news monitoring
+news_sources:
+  rss_feeds:
+    # Google News RSS for Hioki
+    - url: "https://news.google.com/rss/search?q=Hioki+test+measurement"
+      name: "Hioki Test Measurement News"
+      
+    - url: "https://news.google.com/rss/search?q=Hioki+multimeter"
+      name: "Hioki Multimeter News"
+      
+    - url: "https://news.google.com/rss/search?q=Hioki+clamp+meter"
+      name: "Hioki Clamp Meter News"
+    
+    - url: "https://news.google.com/rss/search?q=Hioki+power+analyzer"
+      name: "Hioki Power Analyzer News"
+      
+    - url: "https://news.google.com/rss/search?q=Hioki+insulation+tester"
+      name: "Hioki Insulation Tester News"
+
+  search_terms:
+    - "Hioki"
+    - "Hioki multimeter"
+    - "Hioki clamp meter"
+    - "Hioki power analyzer"
+    - "Hioki insulation tester"
+    - "Hioki vs Fluke"
+    - "Hioki new product"
+    - "Hioki E.E. Corporation"
+
+# Monitoring Settings
+settings:
+  default_check_interval_hours: 24
+  news_check_interval_hours: 6
+  max_retries_on_error: 3
+  timeout_seconds: 30
+  user_agent: "CompetitorMonitor/1.0 (Fluke CI Tool)"
+  
+  # Change detection sensitivity
+  # "high" = detect any change
+  # "medium" = ignore minor whitespace/formatting
+  # "low" = only significant content changes
+  change_sensitivity: "medium"
+  
+  # Minimum content change percentage to trigger alert
+  min_change_percentage: 5

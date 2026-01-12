@@ -1,0 +1,50 @@
+# Web Framework
+Flask==3.0.0
+Flask-SQLAlchemy==3.1.1
+Flask-CORS==4.0.0
+
+# Database
+SQLAlchemy==2.0.23
+
+# HTTP & Web Scraping
+requests==2.31.0
+beautifulsoup4==4.12.2
+lxml==4.9.3
+feedparser==6.0.10
+httpx==0.25.2
+
+# LLM Integration
+openai==1.6.1
+tiktoken==0.5.2
+
+# Content Processing
+html2text==2020.1.16
+python-dateutil==2.8.2
+
+# Scheduling
+APScheduler==3.10.4
+
+# Notifications
+slack-sdk==3.23.0
+
+# PDF Export
+reportlab==4.0.7
+
+# Utilities
+python-dotenv==1.0.0
+PyYAML==6.0.1
+pydantic==2.5.2
+markdown==3.5.1
+
+# Hashing for change detection
+xxhash==3.4.1
+
+# SSL Certificates
+certifi==2024.2.2
+
+# Production Server
+gunicorn==21.2.0
+
+# Development
+pytest==7.4.3
+black==23.12.1

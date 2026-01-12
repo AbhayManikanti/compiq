@@ -1,0 +1,288 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Competitor Monitor{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+
+{% block content %}
+<!-- Stats Row -->
+<div class="row g-4 mb-4">
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="stat-value" id="stat-new-alerts">-</div>
+                    <div class="stat-label">New Alerts (24h)</div>
+                </div>
+                <div class="stat-icon bg-danger bg-opacity-10 text-danger">
+                    <i class="bi bi-bell-fill"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="stat-value" id="stat-unresolved">-</div>
+                    <div class="stat-label">Unresolved Alerts</div>
+                </div>
+                <div class="stat-icon bg-warning bg-opacity-10 text-warning">
+                    <i class="bi bi-exclamation-triangle-fill"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="stat-value" id="stat-competitors">-</div>
+                    <div class="stat-label">Competitors Monitored</div>
+                </div>
+                <div class="stat-icon bg-primary bg-opacity-10 text-primary">
+                    <i class="bi bi-building"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="stat-value" id="stat-urls">-</div>
+                    <div class="stat-label">URLs Monitored</div>
+                </div>
+                <div class="stat-icon bg-success bg-opacity-10 text-success">
+                    <i class="bi bi-link-45deg"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Risk Distribution Chart -->
+    <div class="col-md-4">
+        <div class="chart-container">
+            <h6 class="mb-3">Risk Distribution</h6>
+            <canvas id="riskChart" height="200"></canvas>
+        </div>
+    </div>
+    
+    <!-- Signal Types Chart -->
+    <div class="col-md-4">
+        <div class="chart-container">
+            <h6 class="mb-3">Signal Types</h6>
+            <canvas id="signalChart" height="200"></canvas>
+        </div>
+    </div>
+    
+    <!-- Competitor Activity -->
+    <div class="col-md-4">
+        <div class="chart-container">
+            <h6 class="mb-3">Competitor Activity</h6>
+            <div id="competitorActivity">
+                <div class="loading-spinner">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Alerts -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="table-container">
+            <div class="p-3 border-bottom d-flex justify-content-between align-items-center">
+                <h6 class="mb-0">Recent Alerts</h6>
+                <a href="{{ url_for('main.alerts_list') }}" class="btn btn-sm btn-outline-primary">View All</a>
+            </div>
+            <div id="recentAlerts">
+                <div class="loading-spinner">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let riskChart, signalChart;
+
+async function loadDashboard() {
+    try {
+        const stats = await fetchAPI('/stats');
+        
+        // Update stat cards
+        document.getElementById('stat-new-alerts').textContent = stats.summary.new_alerts_24h;
+        document.getElementById('stat-unresolved').textContent = stats.summary.unresolved_alerts;
+        document.getElementById('stat-competitors').textContent = stats.summary.competitors_monitored;
+        document.getElementById('stat-urls').textContent = stats.summary.urls_monitored;
+        
+        // Update risk chart
+        updateRiskChart(stats.risk_distribution);
+        
+        // Update signal chart
+        updateSignalChart(stats.signal_distribution);
+        
+        // Update competitor activity
+        updateCompetitorActivity(stats.competitor_stats);
+        
+        // Update recent alerts
+        updateRecentAlerts(stats.recent_alerts);
+        
+    } catch (error) {
+        console.error('Error loading dashboard:', error);
+    }
+}
+
+function updateRiskChart(distribution) {
+    const ctx = document.getElementById('riskChart').getContext('2d');
+    
+    const data = {
+        labels: ['Critical', 'High', 'Medium', 'Low', 'Info'],
+        datasets: [{
+            data: [
+                distribution.critical || 0,
+                distribution.high || 0,
+                distribution.medium || 0,
+                distribution.low || 0,
+                distribution.info || 0
+            ],
+            backgroundColor: ['#dc3545', '#fd7e14', '#ffc107', '#28a745', '#17a2b8']
+        }]
+    };
+    
+    if (riskChart) {
+        riskChart.data = data;
+        riskChart.update();
+    } else {
+        riskChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: data,
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    }
+                }
+            }
+        });
+    }
+}
+
+function updateSignalChart(distribution) {
+    const ctx = document.getElementById('signalChart').getContext('2d');
+    
+    const labels = Object.keys(distribution).map(k => k.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()));
+    const values = Object.values(distribution);
+    
+    const data = {
+        labels: labels,
+        datasets: [{
+            data: values,
+            backgroundColor: [
+                '#4facfe', '#00f2fe', '#43e97b', '#38f9d7', 
+                '#fa709a', '#fee140', '#a8edea', '#fed6e3'
+            ]
+        }]
+    };
+    
+    if (signalChart) {
+        signalChart.data = data;
+        signalChart.update();
+    } else {
+        signalChart = new Chart(ctx, {
+            type: 'pie',
+            data: data,
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    }
+                }
+            }
+        });
+    }
+}
+
+function updateCompetitorActivity(stats) {
+    const container = document.getElementById('competitorActivity');
+    
+    if (!stats || stats.length === 0) {
+        container.innerHTML = '<p class="text-muted text-center">No competitor data</p>';
+        return;
+    }
+    
+    let html = '<div class="list-group list-group-flush">';
+    
+    for (const comp of stats) {
+        html += `
+            <a href="/competitors/${comp.id}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                <div>
+                    <strong>${comp.name}</strong>
+                    <small class="text-muted d-block">${comp.urls_monitored} URLs monitored</small>
+                </div>
+                ${comp.new_alerts > 0 ? `<span class="badge bg-danger">${comp.new_alerts} new</span>` : '<span class="badge bg-secondary">0 new</span>'}
+            </a>
+        `;
+    }
+    
+    html += '</div>';
+    container.innerHTML = html;
+}
+
+function updateRecentAlerts(alerts) {
+    const container = document.getElementById('recentAlerts');
+    
+    if (!alerts || alerts.length === 0) {
+        container.innerHTML = '<p class="text-muted text-center p-4">No recent alerts</p>';
+        return;
+    }
+    
+    let html = '<table class="table table-hover mb-0"><thead><tr>';
+    html += '<th>Alert</th><th>Competitor</th><th>Type</th><th>Risk</th><th>Detected</th><th>Status</th>';
+    html += '</tr></thead><tbody>';
+    
+    for (const alert of alerts) {
+        const riskClass = getRiskBadgeClass(alert.risk_level);
+        const statusClass = alert.status === 'new' ? 'text-danger' : 'text-muted';
+        
+        html += `
+            <tr onclick="window.location='/alerts/${alert.id}'" style="cursor: pointer;">
+                <td>
+                    <strong>${alert.title.substring(0, 50)}${alert.title.length > 50 ? '...' : ''}</strong>
+                </td>
+                <td>${alert.competitor_name || 'Unknown'}</td>
+                <td><span class="badge bg-secondary">${(alert.signal_type || '').replace('_', ' ')}</span></td>
+                <td><span class="badge ${riskClass}">${alert.risk_level?.toUpperCase()}</span></td>
+                <td>${formatDate(alert.detected_at)}</td>
+                <td class="${statusClass}">${alert.status}</td>
+            </tr>
+        `;
+    }
+    
+    html += '</tbody></table>';
+    container.innerHTML = html;
+}
+
+// Load on page ready
+document.addEventListener('DOMContentLoaded', loadDashboard);
+
+// Override refreshData to also reload dashboard
+const originalRefreshData = refreshData;
+refreshData = async function() {
+    await originalRefreshData();
+    await loadDashboard();
+};
+</script>
+{% endblock %}

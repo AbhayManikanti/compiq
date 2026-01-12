@@ -1,0 +1,297 @@
+{% extends "base.html" %}
+
+{% block title %}{{ account.account_name }} - Account Details{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="/">Dashboard</a></li>
+            <li class="breadcrumb-item"><a href="/accounts">Accounts</a></li>
+            <li class="breadcrumb-item active">{{ account.account_name }}</li>
+        </ol>
+    </nav>
+
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-start mb-4">
+        <div>
+            <h2>{{ account.account_name }}</h2>
+            <p class="text-muted">
+                {% if account.website %}<a href="{{ account.website }}" target="_blank">{{ account.website }}</a> • {% endif %}
+                {{ account.industry or 'No industry' }} • {{ account.size or 'Unknown size' }} • {{ account.region or 'No region' }}
+            </p>
+        </div>
+        <div class="d-flex gap-2">
+            <span class="badge bg-{{ 'danger' if account.account_tier == 'strategic' else ('warning' if account.account_tier == 'key' else 'secondary') }} fs-6">{{ account.account_tier }} Account</span>
+            {% if account.deal_stage %}
+            <span class="badge bg-primary fs-6">{{ account.deal_stage }}</span>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Left Column: Details -->
+        <div class="col-lg-8">
+            <!-- Overview -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-info-circle me-2"></i>Account Overview</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Deal Value:</strong> {{ '${:,.0f}'.format(account.deal_value) if account.deal_value else 'Not set' }}</p>
+                            <p><strong>Account Owner:</strong> {{ account.account_owner or 'Unassigned' }}</p>
+                            <p><strong>Sales Rep:</strong> {{ account.sales_rep or 'Unassigned' }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Competitive Status:</strong> 
+                                <span class="badge bg-{{ 'warning' if account.competitive_status == 'displacement' else ('info' if account.competitive_status == 'retention' else 'success') }}">
+                                    {{ account.competitive_status or 'Unknown' }}
+                                </span>
+                            </p>
+                            <p><strong>Incumbent:</strong> {{ account.incumbent.name if account.incumbent else 'None (Greenfield)' }}</p>
+                        </div>
+                    </div>
+                    
+                    {% if account.notes %}
+                    <hr>
+                    <h6>Notes</h6>
+                    <p>{{ account.notes }}</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Activity Timeline -->
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between">
+                    <h5 class="mb-0"><i class="bi bi-clock-history me-2"></i>Activity Timeline</h5>
+                    <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#activityModal">
+                        <i class="bi bi-plus"></i> Log Activity
+                    </button>
+                </div>
+                <div class="card-body" id="activityTimeline">
+                    <div class="spinner-border spinner-border-sm" role="status"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column: Quick Actions & Intel -->
+        <div class="col-lg-4">
+            <!-- Next Action -->
+            <div class="card mb-4 {{ 'border-warning' if account.next_action else '' }}">
+                <div class="card-header bg-{{ 'warning' if account.next_action else 'light' }}">
+                    <h5 class="mb-0"><i class="bi bi-calendar-check me-2"></i>Next Action</h5>
+                </div>
+                <div class="card-body">
+                    {% if account.next_action %}
+                    <p><strong>{{ account.next_action }}</strong></p>
+                    <p class="text-muted">Due: {{ account.next_action_date.strftime('%B %d, %Y') if account.next_action_date else 'No date set' }}</p>
+                    {% else %}
+                    <p class="text-muted">No next action scheduled.</p>
+                    {% endif %}
+                    <button class="btn btn-outline-primary btn-sm" onclick="setNextAction()">Set Next Action</button>
+                </div>
+            </div>
+
+            <!-- Competitive Intel -->
+            <div class="card mb-4">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0"><i class="bi bi-shield-exclamation me-2"></i>Competitive Intel</h5>
+                </div>
+                <div class="card-body" id="competitiveIntel">
+                    <p class="text-muted small">Competitive insights gathered from this account will appear here.</p>
+                </div>
+            </div>
+
+            <!-- Related Battle Card -->
+            {% if account.incumbent %}
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-card-checklist me-2"></i>Battle Card</h5>
+                </div>
+                <div class="card-body">
+                    <p>Use the <strong>{{ account.incumbent.name }}</strong> battle card:</p>
+                    <a href="/battle-cards?competitor_id={{ account.incumbent_competitor_id }}" class="btn btn-outline-primary btn-sm">
+                        <i class="bi bi-arrow-right"></i> View Battle Cards
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Log Activity Modal -->
+<div class="modal fade" id="activityModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-journal-plus me-2"></i>Log Activity</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="activityForm">
+                    <div class="mb-3">
+                        <label class="form-label">Activity Type</label>
+                        <select class="form-select" id="activityType" required>
+                            <option value="meeting">Meeting</option>
+                            <option value="email">Email</option>
+                            <option value="call">Call</option>
+                            <option value="intel">Competitive Intel</option>
+                            <option value="competitor_mention">Competitor Mention</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Description</label>
+                        <textarea class="form-control" id="activityDescription" rows="3" required></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Competitor Mentioned</label>
+                        <select class="form-select" id="activityCompetitor">
+                            <option value="">None</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Competitive Insight</label>
+                        <textarea class="form-control" id="activityInsight" rows="2" placeholder="Any competitive intel gathered..."></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="logActivity()">Log Activity</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const accountId = {{ account.id }};
+
+async function loadCompetitors() {
+    const competitors = await fetchAPI('/competitors');
+    const select = document.getElementById('activityCompetitor');
+    competitors.forEach(c => {
+        select.innerHTML += `<option value="${c.id}">${c.name}</option>`;
+    });
+}
+
+async function loadActivities() {
+    try {
+        const activities = await fetchAPI(`/accounts/${accountId}/activities`);
+        const container = document.getElementById('activityTimeline');
+        
+        if (activities.length === 0) {
+            container.innerHTML = '<p class="text-muted">No activities logged yet.</p>';
+            return;
+        }
+        
+        container.innerHTML = activities.map(a => `
+            <div class="d-flex mb-3">
+                <div class="me-3">
+                    <span class="badge bg-${getActivityColor(a.activity_type)} p-2">
+                        <i class="bi bi-${getActivityIcon(a.activity_type)}"></i>
+                    </span>
+                </div>
+                <div class="flex-grow-1">
+                    <div class="d-flex justify-content-between">
+                        <strong>${a.activity_type}</strong>
+                        <small class="text-muted">${new Date(a.activity_date).toLocaleDateString()}</small>
+                    </div>
+                    <p class="mb-1">${a.description || ''}</p>
+                    ${a.competitor_name ? `<span class="badge bg-warning">Mentioned: ${a.competitor_name}</span>` : ''}
+                    ${a.competitive_insight ? `<p class="small text-info mt-1"><i class="bi bi-lightbulb"></i> ${a.competitive_insight}</p>` : ''}
+                </div>
+            </div>
+        `).join('');
+        
+        // Load competitive intel
+        const intelActivities = activities.filter(a => a.competitive_insight);
+        const intelContainer = document.getElementById('competitiveIntel');
+        if (intelActivities.length > 0) {
+            intelContainer.innerHTML = intelActivities.slice(0, 5).map(a => `
+                <div class="border-bottom pb-2 mb-2">
+                    <small class="text-muted">${new Date(a.activity_date).toLocaleDateString()}</small>
+                    <p class="small mb-0">${a.competitive_insight}</p>
+                </div>
+            `).join('');
+        }
+    } catch (error) {
+        document.getElementById('activityTimeline').innerHTML = '<p class="text-muted">Unable to load activities.</p>';
+    }
+}
+
+function getActivityColor(type) {
+    const colors = {
+        'meeting': 'primary',
+        'email': 'info',
+        'call': 'success',
+        'intel': 'warning',
+        'competitor_mention': 'danger'
+    };
+    return colors[type] || 'secondary';
+}
+
+function getActivityIcon(type) {
+    const icons = {
+        'meeting': 'people',
+        'email': 'envelope',
+        'call': 'telephone',
+        'intel': 'lightbulb',
+        'competitor_mention': 'building'
+    };
+    return icons[type] || 'circle';
+}
+
+async function logActivity() {
+    const data = {
+        activity_type: document.getElementById('activityType').value,
+        description: document.getElementById('activityDescription').value,
+        competitor_mentioned: document.getElementById('activityCompetitor').value || null,
+        competitive_insight: document.getElementById('activityInsight').value
+    };
+    
+    try {
+        await fetchAPI(`/accounts/${accountId}/activities`, {
+            method: 'POST',
+            body: JSON.stringify(data)
+        });
+        
+        bootstrap.Modal.getInstance(document.getElementById('activityModal')).hide();
+        showToast('Success', 'Activity logged!', 'success');
+        loadActivities();
+        document.getElementById('activityForm').reset();
+    } catch (error) {
+        showToast('Error', error.message, 'danger');
+    }
+}
+
+function setNextAction() {
+    const action = prompt('What is the next action?');
+    if (!action) return;
+    
+    const date = prompt('Due date (YYYY-MM-DD):');
+    
+    fetchAPI(`/accounts/${accountId}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+            next_action: action,
+            next_action_date: date || null
+        })
+    }).then(() => {
+        showToast('Success', 'Next action set!', 'success');
+        location.reload();
+    }).catch(err => showToast('Error', err.message, 'danger'));
+}
+
+// Initialize
+document.addEventListener('DOMContentLoaded', () => {
+    loadCompetitors();
+    loadActivities();
+});
+</script>
+{% endblock %}

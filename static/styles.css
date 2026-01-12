@@ -1,0 +1,30 @@
+/* Competitor Monitor - Custom Styles */
+/* Most styles are in base.html for simplicity, but you can add custom CSS here */
+
+/* Additional custom styles */
+.fade-in {
+    animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Pulse animation for new alerts */
+.pulse {
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.4); }
+    70% { box-shadow: 0 0 0 10px rgba(220, 53, 69, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); }
+}
+
+/* Print styles */
+@media print {
+    .sidebar { display: none; }
+    .main-content { margin-left: 0; }
+    .btn { display: none; }
+}

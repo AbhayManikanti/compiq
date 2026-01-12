@@ -1,0 +1,303 @@
+{% extends "base.html" %}
+
+{% block title %}Integrations - Competitor Monitor{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2><i class="bi bi-plug me-2"></i>Integrations</h2>
+            <p class="text-muted mb-0">Connect external data sources for enhanced monitoring</p>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- changedetection.io -->
+        <div class="col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header bg-dark text-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-eye me-2"></i>changedetection.io
+                        <span id="cd-status-badge" class="badge bg-secondary float-end">Checking...</span>
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted">Self-hosted webpage change detection service. Monitors competitor pages for visual and content changes.</p>
+                    
+                    <div id="cd-not-configured" style="display: none;">
+                        <div class="alert alert-warning">
+                            <i class="bi bi-exclamation-triangle me-1"></i>
+                            Not configured. Set <code>CHANGEDETECTION_URL</code> environment variable.
+                        </div>
+                        <pre class="bg-light p-2"><code>export CHANGEDETECTION_URL=http://localhost:5000
+export CHANGEDETECTION_API_KEY=your-api-key</code></pre>
+                    </div>
+                    
+                    <div id="cd-configured" style="display: none;">
+                        <div class="mb-3">
+                            <strong>Status:</strong> <span id="cd-connection-status"></span>
+                        </div>
+                        <div class="mb-3">
+                            <strong>Watches:</strong> <span id="cd-watch-count">-</span>
+                        </div>
+                        <div class="mb-3">
+                            <strong>URL:</strong> <code id="cd-url"></code>
+                        </div>
+                        
+                        <hr>
+                        
+                        <h6>Add URL to Watch</h6>
+                        <div class="input-group mb-3">
+                            <input type="url" class="form-control" id="cd-new-url" placeholder="https://competitor.com/products">
+                            <button class="btn btn-primary" onclick="addChangeDetectionWatch()">
+                                <i class="bi bi-plus"></i> Add
+                            </button>
+                        </div>
+                        
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-success" onclick="syncChangeDetection()">
+                                <i class="bi bi-arrow-repeat"></i> Sync All URLs
+                            </button>
+                            <button class="btn btn-outline-secondary" onclick="checkChangeDetectionStatus()">
+                                <i class="bi bi-arrow-clockwise"></i> Refresh
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Google Alerts -->
+        <div class="col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-google me-2"></i>Google Alerts
+                        <span id="ga-status-badge" class="badge bg-light text-dark float-end">Checking...</span>
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted">Fetch news and mentions from Google Alerts RSS feeds based on competitor keywords.</p>
+                    
+                    <div class="mb-3">
+                        <strong>Configured Alerts:</strong> <span id="ga-alert-count">-</span>
+                    </div>
+                    
+                    <div id="ga-alerts-list" class="mb-3" style="max-height: 200px; overflow-y: auto;">
+                        <!-- Alert list populated by JS -->
+                    </div>
+                    
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle me-1"></i>
+                        To add Google Alerts, update the <code>keywords</code> section in <code>config/competitors.yaml</code>
+                    </div>
+                    
+                    <button class="btn btn-success" onclick="syncGoogleAlerts()">
+                        <i class="bi bi-arrow-repeat"></i> Fetch Google Alerts
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Other Integrations -->
+    <div class="row">
+        <div class="col-md-4 mb-4">
+            <div class="card h-100">
+                <div class="card-header bg-secondary text-white">
+                    <h5 class="mb-0"><i class="bi bi-rss me-2"></i>RSS Feeds</h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted">Built-in RSS monitoring for competitor news and press releases.</p>
+                    <div class="alert alert-success">
+                        <i class="bi bi-check-circle me-1"></i> Active - Feeds configured in competitors.yaml
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4 mb-4">
+            <div class="card h-100">
+                <div class="card-header bg-secondary text-white">
+                    <h5 class="mb-0"><i class="bi bi-slack me-2"></i>Slack Notifications</h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted">Send alerts to Slack channels for real-time notifications.</p>
+                    <div id="slack-status">
+                        <!-- Status populated by JS -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4 mb-4">
+            <div class="card h-100">
+                <div class="card-header bg-secondary text-white">
+                    <h5 class="mb-0"><i class="bi bi-robot me-2"></i>Azure OpenAI</h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted">AI-powered analysis and insights generation.</p>
+                    <div id="openai-status">
+                        <!-- Status populated by JS -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Check changedetection.io status
+async function checkChangeDetectionStatus() {
+    try {
+        const response = await fetch('/api/integrations/changedetection/status');
+        const data = await response.json();
+        
+        if (!data.configured) {
+            document.getElementById('cd-status-badge').className = 'badge bg-warning float-end';
+            document.getElementById('cd-status-badge').textContent = 'Not Configured';
+            document.getElementById('cd-not-configured').style.display = 'block';
+            document.getElementById('cd-configured').style.display = 'none';
+        } else if (data.connected) {
+            document.getElementById('cd-status-badge').className = 'badge bg-success float-end';
+            document.getElementById('cd-status-badge').textContent = 'Connected';
+            document.getElementById('cd-not-configured').style.display = 'none';
+            document.getElementById('cd-configured').style.display = 'block';
+            document.getElementById('cd-connection-status').innerHTML = '<span class="text-success">Connected</span>';
+            document.getElementById('cd-watch-count').textContent = data.watch_count;
+            document.getElementById('cd-url').textContent = data.url;
+        } else {
+            document.getElementById('cd-status-badge').className = 'badge bg-danger float-end';
+            document.getElementById('cd-status-badge').textContent = 'Error';
+            document.getElementById('cd-not-configured').style.display = 'none';
+            document.getElementById('cd-configured').style.display = 'block';
+            document.getElementById('cd-connection-status').innerHTML = `<span class="text-danger">Error: ${data.error}</span>`;
+        }
+    } catch (error) {
+        document.getElementById('cd-status-badge').className = 'badge bg-danger float-end';
+        document.getElementById('cd-status-badge').textContent = 'Error';
+    }
+}
+
+async function addChangeDetectionWatch() {
+    const url = document.getElementById('cd-new-url').value;
+    if (!url) {
+        showToast('Error', 'Please enter a URL', 'warning');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/integrations/changedetection/add', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({url: url, tag: 'competitor-monitor'})
+        });
+        const data = await response.json();
+        
+        if (data.success) {
+            showToast('Success', 'Watch added successfully', 'success');
+            document.getElementById('cd-new-url').value = '';
+            checkChangeDetectionStatus();
+        } else {
+            showToast('Error', data.error || 'Failed to add watch', 'danger');
+        }
+    } catch (error) {
+        showToast('Error', error.message, 'danger');
+    }
+}
+
+async function syncChangeDetection() {
+    showToast('Syncing', 'Syncing with changedetection.io...', 'info');
+    
+    try {
+        const response = await fetch('/api/integrations/changedetection/sync', {method: 'POST'});
+        const data = await response.json();
+        
+        if (data.success) {
+            showToast('Success', `Synced ${data.synced.added || 0} URLs, imported ${data.imported_changes.length} changes`, 'success');
+            checkChangeDetectionStatus();
+        } else {
+            showToast('Error', data.error || 'Sync failed', 'danger');
+        }
+    } catch (error) {
+        showToast('Error', error.message, 'danger');
+    }
+}
+
+// Check Google Alerts status
+async function checkGoogleAlertsStatus() {
+    try {
+        const response = await fetch('/api/integrations/google-alerts/status');
+        const data = await response.json();
+        
+        document.getElementById('ga-alert-count').textContent = data.alert_count;
+        
+        if (data.configured) {
+            document.getElementById('ga-status-badge').className = 'badge bg-success float-end';
+            document.getElementById('ga-status-badge').textContent = `${data.alert_count} Active`;
+            
+            const listEl = document.getElementById('ga-alerts-list');
+            listEl.innerHTML = data.alerts.map(a => 
+                `<div class="d-flex justify-content-between border-bottom py-1">
+                    <span>${a.keyword}</span>
+                    <small class="text-muted">${a.competitor}</small>
+                </div>`
+            ).join('');
+        } else {
+            document.getElementById('ga-status-badge').className = 'badge bg-warning float-end';
+            document.getElementById('ga-status-badge').textContent = 'Not Configured';
+        }
+    } catch (error) {
+        document.getElementById('ga-status-badge').className = 'badge bg-danger float-end';
+        document.getElementById('ga-status-badge').textContent = 'Error';
+    }
+}
+
+async function syncGoogleAlerts() {
+    showToast('Fetching', 'Fetching Google Alerts...', 'info');
+    
+    try {
+        const response = await fetch('/api/integrations/google-alerts/sync', {method: 'POST'});
+        const data = await response.json();
+        
+        if (data.success) {
+            showToast('Success', `Fetched ${data.fetched} alerts, ${data.new_items} new items`, 'success');
+        } else {
+            showToast('Error', data.error || 'Fetch failed', 'danger');
+        }
+    } catch (error) {
+        showToast('Error', error.message, 'danger');
+    }
+}
+
+// Check other integration statuses
+function checkOtherIntegrations() {
+    // Slack status
+    const slackWebhook = '{{ config.get("SLACK_WEBHOOK_URL", "") }}';
+    const slackEl = document.getElementById('slack-status');
+    if (slackWebhook) {
+        slackEl.innerHTML = '<div class="alert alert-success"><i class="bi bi-check-circle me-1"></i> Configured</div>';
+    } else {
+        slackEl.innerHTML = '<div class="alert alert-warning"><i class="bi bi-exclamation-triangle me-1"></i> Not configured. Set SLACK_WEBHOOK_URL</div>';
+    }
+    
+    // OpenAI status
+    const openaiEl = document.getElementById('openai-status');
+    fetch('/api/stats').then(r => r.json()).then(data => {
+        openaiEl.innerHTML = '<div class="alert alert-success"><i class="bi bi-check-circle me-1"></i> Connected</div>';
+    }).catch(() => {
+        openaiEl.innerHTML = '<div class="alert alert-warning"><i class="bi bi-exclamation-triangle me-1"></i> Unable to verify</div>';
+    });
+}
+
+// Initialize
+document.addEventListener('DOMContentLoaded', () => {
+    checkChangeDetectionStatus();
+    checkGoogleAlertsStatus();
+    checkOtherIntegrations();
+});
+</script>
+{% endblock %}

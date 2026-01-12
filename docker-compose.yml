@@ -1,0 +1,40 @@
+version: "3.8"
+
+services:
+  # Main web application
+  web:
+    build: .
+    ports:
+      - "5000:5000"
+    environment:
+      - FLASK_HOST=0.0.0.0
+      - FLASK_PORT=5000
+      - FLASK_DEBUG=false
+      - DATABASE_URL=sqlite:///data/competitor_monitor.db
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./config:/app/config
+    depends_on:
+      - scheduler
+    restart: unless-stopped
+
+  # Background scheduler
+  scheduler:
+    build: .
+    command: python scheduler.py
+    environment:
+      - DATABASE_URL=sqlite:///data/competitor_monitor.db
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./config:/app/config
+    restart: unless-stopped
+
+volumes:
+  data:
+  logs:

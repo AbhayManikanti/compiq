@@ -1,0 +1,63 @@
+# Virtual environments
+venv/
+.venv/
+env/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Distribution
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Git
+.git/
+.gitignore
+
+# Firebase
+.firebaserc
+firebase.json
+public/
+
+# Tests
+tests/
+pytest.ini
+.pytest_cache/
+
+# Local data (will use Cloud SQL or Firestore in production)
+data/*.db
+
+# Environment files with secrets
+.env
+.env.local
+
+# Logs
+logs/
+*.log
+
+# Documentation
+*.md
+docs/

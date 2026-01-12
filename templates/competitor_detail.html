@@ -1,0 +1,454 @@
+{% extends "base.html" %}
+
+{% block title %}{{ competitor.name }} - Competitor Monitor{% endblock %}
+{% block page_title %}{{ competitor.name }}{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Main Content -->
+    <div class="col-lg-8">
+        <!-- Competitor Info -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="d-flex align-items-start">
+                    {% if competitor.logo_url %}
+                    <img src="{{ competitor.logo_url }}" alt="{{ competitor.name }}" class="me-4" style="width: 80px; height: 80px; object-fit: contain;">
+                    {% else %}
+                    <div class="me-4 bg-primary bg-opacity-10 rounded d-flex align-items-center justify-content-center" style="width: 80px; height: 80px;">
+                        <i class="bi bi-building text-primary" style="font-size: 2rem;"></i>
+                    </div>
+                    {% endif %}
+                    <div class="flex-grow-1">
+                        <h3 class="mb-1">{{ competitor.name }}</h3>
+                        {% if competitor.website %}
+                        <a href="{{ competitor.website }}" target="_blank" class="text-muted">
+                            <i class="bi bi-link-45deg"></i> {{ competitor.website }}
+                        </a>
+                        {% endif %}
+                        {% if competitor.description %}
+                        <p class="mt-2 mb-0">{{ competitor.description }}</p>
+                        {% endif %}
+                    </div>
+                    <span class="badge {{ 'bg-success' if competitor.is_active else 'bg-secondary' }} fs-6">
+                        {{ 'Active' if competitor.is_active else 'Inactive' }}
+                    </span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Monitored URLs -->
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h6 class="mb-0"><i class="bi bi-link-45deg"></i> Monitored URLs</h6>
+                <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addUrlModal">
+                    <i class="bi bi-plus-lg"></i> Add URL
+                </button>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>URL</th>
+                                <th>Type</th>
+                                <th>Last Checked</th>
+                                <th>Status</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="urlsTable">
+                            <tr>
+                                <td colspan="6" class="text-center text-muted">Loading...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Recent Alerts -->
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h6 class="mb-0"><i class="bi bi-bell"></i> Recent Alerts</h6>
+                <a href="{{ url_for('main.alerts_list') }}?competitor_id={{ competitor.id }}" class="btn btn-sm btn-outline-primary">
+                    View All
+                </a>
+            </div>
+            <div class="card-body p-0" id="alertsContainer">
+                <div class="text-center p-4">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Sidebar -->
+    <div class="col-lg-4">
+        <!-- Quick Actions -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h6 class="mb-0">Quick Actions</h6>
+            </div>
+            <div class="card-body">
+                <button class="btn btn-primary w-100 mb-2" onclick="runMonitorForCompetitor()">
+                    <i class="bi bi-arrow-repeat"></i> Check All URLs Now
+                </button>
+                <button class="btn btn-outline-secondary w-100 mb-2" onclick="collectNews()">
+                    <i class="bi bi-newspaper"></i> Collect News
+                </button>
+                <button class="btn btn-outline-danger w-100" onclick="toggleActive()">
+                    <i class="bi bi-{{ 'pause' if competitor.is_active else 'play' }}"></i>
+                    {{ 'Pause Monitoring' if competitor.is_active else 'Resume Monitoring' }}
+                </button>
+            </div>
+        </div>
+        
+        <!-- Statistics -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h6 class="mb-0">Statistics</h6>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-6">
+                        <div class="text-center p-3 bg-light rounded">
+                            <div class="fs-3 fw-bold text-primary" id="statUrls">-</div>
+                            <small class="text-muted">URLs Monitored</small>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="text-center p-3 bg-light rounded">
+                            <div class="fs-3 fw-bold text-danger" id="statAlerts">-</div>
+                            <small class="text-muted">Open Alerts</small>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="text-center p-3 bg-light rounded">
+                            <div class="fs-3 fw-bold text-success" id="statChanges">-</div>
+                            <small class="text-muted">Changes (7d)</small>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="text-center p-3 bg-light rounded">
+                            <div class="fs-3 fw-bold text-info" id="statNews">-</div>
+                            <small class="text-muted">News Items</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Edit Competitor -->
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0">Edit Competitor</h6>
+            </div>
+            <div class="card-body">
+                <form id="editForm">
+                    <div class="mb-3">
+                        <label class="form-label">Name</label>
+                        <input type="text" class="form-control" id="editName" value="{{ competitor.name }}">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Description</label>
+                        <textarea class="form-control" id="editDescription" rows="2">{{ competitor.description or '' }}</textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Website</label>
+                        <input type="url" class="form-control" id="editWebsite" value="{{ competitor.website or '' }}">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Logo URL</label>
+                        <input type="url" class="form-control" id="editLogo" value="{{ competitor.logo_url or '' }}">
+                    </div>
+                    <button type="button" class="btn btn-primary w-100" onclick="saveCompetitor()">
+                        <i class="bi bi-save"></i> Save Changes
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add URL Modal -->
+<div class="modal fade" id="addUrlModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add URL to Monitor</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addUrlForm">
+                    <div class="mb-3">
+                        <label class="form-label">URL *</label>
+                        <input type="url" class="form-control" id="urlUrl" required placeholder="https://example.com/page">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Name</label>
+                        <input type="text" class="form-control" id="urlName" placeholder="e.g., Product Page">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Page Type</label>
+                        <select class="form-select" id="urlType">
+                            <option value="product_page">Product Page</option>
+                            <option value="pricing_page">Pricing Page</option>
+                            <option value="news_page">News/Press Page</option>
+                            <option value="blog">Blog</option>
+                            <option value="landing_page">Landing Page</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Check Interval (hours)</label>
+                        <select class="form-select" id="urlInterval">
+                            <option value="6">Every 6 hours</option>
+                            <option value="12">Every 12 hours</option>
+                            <option value="24" selected>Every 24 hours</option>
+                            <option value="48">Every 48 hours</option>
+                            <option value="168">Weekly</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="addUrl()">
+                    <i class="bi bi-plus-lg"></i> Add URL
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const competitorId = {{ competitor.id }};
+
+async function loadCompetitorData() {
+    try {
+        const data = await fetchAPI(`/competitors/${competitorId}`);
+        
+        // Update stats
+        document.getElementById('statUrls').textContent = data.monitored_urls?.length || 0;
+        document.getElementById('statAlerts').textContent = data.alert_count || 0;
+        
+        // Load URLs
+        renderUrls(data.monitored_urls || []);
+        
+        // Load recent alerts
+        renderAlerts(data.recent_alerts || []);
+        
+    } catch (error) {
+        console.error('Error loading competitor data:', error);
+    }
+}
+
+function renderUrls(urls) {
+    const tbody = document.getElementById('urlsTable');
+    
+    if (!urls || urls.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">No URLs configured</td></tr>';
+        return;
+    }
+    
+    let html = '';
+    for (const url of urls) {
+        const statusClass = url.consecutive_errors > 0 ? 'text-danger' : 'text-success';
+        const statusIcon = url.consecutive_errors > 0 ? 'x-circle' : 'check-circle';
+        
+        html += `
+            <tr>
+                <td><strong>${url.name || 'Unnamed'}</strong></td>
+                <td><a href="${url.url}" target="_blank" class="text-truncate d-inline-block" style="max-width: 200px;">${url.url}</a></td>
+                <td><span class="badge bg-secondary">${(url.page_type || '').replace('_', ' ')}</span></td>
+                <td>${url.last_checked_at ? formatDate(url.last_checked_at) : 'Never'}</td>
+                <td>
+                    <span class="${statusClass}">
+                        <i class="bi bi-${statusIcon}"></i>
+                        ${url.is_active ? 'Active' : 'Paused'}
+                    </span>
+                </td>
+                <td>
+                    <div class="btn-group btn-group-sm">
+                        <button class="btn btn-outline-primary" onclick="checkUrl(${url.id})" title="Check Now">
+                            <i class="bi bi-arrow-repeat"></i>
+                        </button>
+                        <button class="btn btn-outline-danger" onclick="deleteUrl(${url.id})" title="Delete">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }
+    
+    tbody.innerHTML = html;
+}
+
+function renderAlerts(alerts) {
+    const container = document.getElementById('alertsContainer');
+    
+    if (!alerts || alerts.length === 0) {
+        container.innerHTML = '<p class="text-center text-muted p-4">No alerts for this competitor</p>';
+        return;
+    }
+    
+    let html = '<div class="list-group list-group-flush">';
+    for (const alert of alerts) {
+        html += `
+            <a href="/alerts/${alert.id}" class="list-group-item list-group-item-action">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <strong>${alert.title.substring(0, 50)}...</strong>
+                        <small class="text-muted d-block">${formatDate(alert.detected_at)}</small>
+                    </div>
+                    <span class="badge badge-${alert.risk_level}">${alert.risk_level?.toUpperCase()}</span>
+                </div>
+            </a>
+        `;
+    }
+    html += '</div>';
+    
+    container.innerHTML = html;
+}
+
+async function addUrl() {
+    const url = document.getElementById('urlUrl').value;
+    const name = document.getElementById('urlName').value;
+    const page_type = document.getElementById('urlType').value;
+    const check_interval_hours = parseInt(document.getElementById('urlInterval').value);
+    
+    if (!url) {
+        showToast('Error', 'URL is required', 'error');
+        return;
+    }
+    
+    try {
+        await fetchAPI('/urls', {
+            method: 'POST',
+            body: JSON.stringify({
+                competitor_id: competitorId,
+                url,
+                name,
+                page_type,
+                check_interval_hours
+            })
+        });
+        
+        showToast('Success', 'URL added', 'success');
+        bootstrap.Modal.getInstance(document.getElementById('addUrlModal')).hide();
+        document.getElementById('addUrlForm').reset();
+        loadCompetitorData();
+    } catch (error) {
+        showToast('Error', 'Failed to add URL', 'error');
+    }
+}
+
+async function deleteUrl(id) {
+    if (!confirm('Are you sure you want to delete this URL?')) return;
+    
+    try {
+        await fetchAPI(`/urls/${id}`, { method: 'DELETE' });
+        showToast('Success', 'URL deleted', 'success');
+        loadCompetitorData();
+    } catch (error) {
+        showToast('Error', 'Failed to delete URL', 'error');
+    }
+}
+
+async function checkUrl(id) {
+    showToast('Checking', 'Checking URL for changes...', 'info');
+    
+    try {
+        const result = await fetchAPI('/monitor/check-url', {
+            method: 'POST',
+            body: JSON.stringify({ url_id: id })
+        });
+        
+        if (result.has_changes) {
+            showToast('Changes Detected', 'New changes found on this page!', 'warning');
+        } else {
+            showToast('No Changes', 'No changes detected', 'success');
+        }
+        
+        loadCompetitorData();
+    } catch (error) {
+        showToast('Error', 'Failed to check URL', 'error');
+    }
+}
+
+async function saveCompetitor() {
+    try {
+        await fetchAPI(`/competitors/${competitorId}`, {
+            method: 'PATCH',
+            body: JSON.stringify({
+                name: document.getElementById('editName').value,
+                description: document.getElementById('editDescription').value,
+                website: document.getElementById('editWebsite').value,
+                logo_url: document.getElementById('editLogo').value
+            })
+        });
+        
+        showToast('Success', 'Competitor updated', 'success');
+        location.reload();
+    } catch (error) {
+        showToast('Error', 'Failed to update competitor', 'error');
+    }
+}
+
+async function toggleActive() {
+    const isActive = {{ 'true' if competitor.is_active else 'false' }};
+    
+    try {
+        await fetchAPI(`/competitors/${competitorId}`, {
+            method: 'PATCH',
+            body: JSON.stringify({ is_active: !isActive })
+        });
+        
+        showToast('Success', `Monitoring ${isActive ? 'paused' : 'resumed'}`, 'success');
+        location.reload();
+    } catch (error) {
+        showToast('Error', 'Failed to update status', 'error');
+    }
+}
+
+async function runMonitorForCompetitor() {
+    showToast('Monitor', 'Checking all URLs...', 'info');
+    
+    try {
+        const result = await fetchAPI('/monitor/run', {
+            method: 'POST',
+            body: JSON.stringify({ pages: true, news: false, analyze: true })
+        });
+        
+        showToast('Complete', `Found ${result.results.page_changes.length} changes`, 'success');
+        loadCompetitorData();
+    } catch (error) {
+        showToast('Error', 'Monitor run failed', 'error');
+    }
+}
+
+async function collectNews() {
+    showToast('News', 'Collecting news...', 'info');
+    
+    try {
+        await fetchAPI('/monitor/run', {
+            method: 'POST',
+            body: JSON.stringify({ pages: false, news: true, analyze: true })
+        });
+        
+        showToast('Complete', 'News collected', 'success');
+    } catch (error) {
+        showToast('Error', 'News collection failed', 'error');
+    }
+}
+
+// Initialize
+document.addEventListener('DOMContentLoaded', loadCompetitorData);
+</script>
+{% endblock %}

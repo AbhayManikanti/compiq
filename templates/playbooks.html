@@ -1,0 +1,354 @@
+{% extends "base.html" %}
+
+{% block title %}Competitive Playbooks - Competitor Monitor{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2><i class="bi bi-book me-2"></i>Competitive Playbooks</h2>
+            <p class="text-muted mb-0">Strategic response plans for competitive situations</p>
+        </div>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#playbookModal">
+            <i class="bi bi-plus-lg"></i> New Playbook
+        </button>
+    </div>
+
+    <!-- Playbooks Grid -->
+    <div class="row" id="playbooksGrid">
+        <div class="col-12 text-center py-5">
+            <div class="spinner-border text-primary" role="status"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Create Playbook Modal -->
+<div class="modal fade" id="playbookModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-book me-2"></i>Create Playbook</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="playbookForm">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Playbook Name *</label>
+                            <input type="text" class="form-control" id="playbookName" required placeholder="e.g., Product Launch Response">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Priority (1-10)</label>
+                            <input type="number" class="form-control" id="priority" value="5" min="1" max="10">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Slug</label>
+                            <input type="text" class="form-control" id="slug" placeholder="Auto-generated">
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Description</label>
+                        <textarea class="form-control" id="description" rows="2" placeholder="When to use this playbook..."></textarea>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Trigger Signal Types</label>
+                            <select class="form-select" id="triggerSignals" multiple size="4">
+                                <option value="product_launch">Product Launch</option>
+                                <option value="pricing_change">Pricing Change</option>
+                                <option value="feature_update">Feature Update</option>
+                                <option value="partnership">Partnership</option>
+                                <option value="acquisition">Acquisition</option>
+                                <option value="expansion">Expansion</option>
+                                <option value="leadership_change">Leadership Change</option>
+                                <option value="marketing_campaign">Marketing Campaign</option>
+                            </select>
+                            <small class="text-muted">Hold Ctrl/Cmd to select multiple</small>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Trigger Keywords</label>
+                            <input type="text" class="form-control" id="triggerKeywords" placeholder="Enter comma-separated keywords">
+                            <small class="text-muted">e.g., launch, announce, new product</small>
+                        </div>
+                    </div>
+                    
+                    <hr>
+                    <h6>Team Response Actions</h6>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label"><i class="bi bi-briefcase text-primary"></i> Sales Actions</label>
+                            <textarea class="form-control" id="salesActions" rows="3" placeholder="One action per line..."></textarea>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label"><i class="bi bi-megaphone text-success"></i> Marketing Actions</label>
+                            <textarea class="form-control" id="marketingActions" rows="3" placeholder="One action per line..."></textarea>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label"><i class="bi bi-box text-warning"></i> Product Actions</label>
+                            <textarea class="form-control" id="productActions" rows="3" placeholder="One action per line..."></textarea>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label"><i class="bi bi-star text-danger"></i> Executive Actions</label>
+                            <textarea class="form-control" id="executiveActions" rows="3" placeholder="One action per line..."></textarea>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="createPlaybook()">Create Playbook</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+async function loadPlaybooks() {
+    try {
+        const playbooks = await fetchAPI('/playbooks?active=false');
+        renderPlaybooks(playbooks);
+    } catch (error) {
+        renderPlaybooks([]);
+    }
+}
+
+function renderPlaybooks(playbooks) {
+    const grid = document.getElementById('playbooksGrid');
+    
+    if (playbooks.length === 0) {
+        grid.innerHTML = `
+            <div class="col-12">
+                <div class="alert alert-info">
+                    <h5><i class="bi bi-info-circle me-2"></i>No Playbooks Yet</h5>
+                    <p>Playbooks are strategic response plans that define how different teams should respond to competitive signals.</p>
+                    <p class="mb-0">Create your first playbook to standardize competitive responses across your organization!</p>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-body">
+                                <h5><i class="bi bi-box-seam text-primary"></i> Product Launch Playbook</h5>
+                                <p class="text-muted">How to respond when a competitor launches a new product</p>
+                                <button class="btn btn-outline-primary" onclick="createTemplatePlaybook('product_launch')">Use Template</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-body">
+                                <h5><i class="bi bi-tag text-success"></i> Pricing Change Playbook</h5>
+                                <p class="text-muted">How to respond when a competitor changes pricing</p>
+                                <button class="btn btn-outline-success" onclick="createTemplatePlaybook('pricing_change')">Use Template</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        return;
+    }
+    
+    grid.innerHTML = playbooks.map(pb => `
+        <div class="col-md-6 col-lg-4 mb-4">
+            <div class="card h-100 ${pb.is_active ? 'border-success' : 'border-secondary'}">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">${pb.name}</h5>
+                    <div>
+                        <span class="badge bg-${pb.is_active ? 'success' : 'secondary'}">${pb.is_active ? 'Active' : 'Inactive'}</span>
+                        <span class="badge bg-primary">P${pb.priority}</span>
+                    </div>
+                </div>
+                <div class="card-body">
+                    ${pb.description ? `<p class="text-muted">${pb.description}</p>` : ''}
+                    
+                    <h6>Triggers</h6>
+                    <div class="mb-3">
+                        ${pb.trigger_signal_types.map(t => `<span class="badge bg-info me-1">${t}</span>`).join('')}
+                    </div>
+                    
+                    <div class="row text-center">
+                        <div class="col-3">
+                            <span class="badge bg-primary">${pb.sales_actions.length}</span>
+                            <small class="d-block text-muted">Sales</small>
+                        </div>
+                        <div class="col-3">
+                            <span class="badge bg-success">${pb.marketing_actions.length}</span>
+                            <small class="d-block text-muted">Marketing</small>
+                        </div>
+                        <div class="col-3">
+                            <span class="badge bg-warning">${pb.product_actions.length}</span>
+                            <small class="d-block text-muted">Product</small>
+                        </div>
+                        <div class="col-3">
+                            <span class="badge bg-danger">${pb.executive_actions.length}</span>
+                            <small class="d-block text-muted">Exec</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer bg-transparent">
+                    <button class="btn btn-outline-primary btn-sm w-100" onclick="viewPlaybook(${pb.id})">
+                        <i class="bi bi-eye"></i> View Details
+                    </button>
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+async function createPlaybook() {
+    const data = {
+        name: document.getElementById('playbookName').value,
+        slug: document.getElementById('slug').value || undefined,
+        description: document.getElementById('description').value,
+        priority: parseInt(document.getElementById('priority').value),
+        trigger_signal_types: Array.from(document.getElementById('triggerSignals').selectedOptions).map(o => o.value),
+        trigger_keywords: document.getElementById('triggerKeywords').value.split(',').map(k => k.trim()).filter(k => k),
+        sales_actions: document.getElementById('salesActions').value.split('\n').filter(a => a.trim()),
+        marketing_actions: document.getElementById('marketingActions').value.split('\n').filter(a => a.trim()),
+        product_actions: document.getElementById('productActions').value.split('\n').filter(a => a.trim()),
+        executive_actions: document.getElementById('executiveActions').value.split('\n').filter(a => a.trim())
+    };
+    
+    if (!data.name) {
+        showToast('Error', 'Playbook name is required', 'warning');
+        return;
+    }
+    
+    try {
+        await fetchAPI('/playbooks', {
+            method: 'POST',
+            body: JSON.stringify(data)
+        });
+        
+        bootstrap.Modal.getInstance(document.getElementById('playbookModal')).hide();
+        showToast('Success', 'Playbook created!', 'success');
+        loadPlaybooks();
+        document.getElementById('playbookForm').reset();
+    } catch (error) {
+        showToast('Error', error.message, 'danger');
+    }
+}
+
+async function createTemplatePlaybook(type) {
+    const templates = {
+        'product_launch': {
+            name: 'Product Launch Response',
+            description: 'Standard response when a competitor launches a new product',
+            trigger_signal_types: ['product_launch', 'feature_update'],
+            trigger_keywords: ['launch', 'announce', 'new product', 'release'],
+            sales_actions: [
+                'Review product specs and create quick comparison',
+                'Update battle cards within 48 hours',
+                'Notify key accounts about our competitive advantages',
+                'Schedule competitive briefing for team'
+            ],
+            marketing_actions: [
+                'Draft competitive positioning blog post',
+                'Update website comparison pages',
+                'Create social media counter-messaging',
+                'Brief content team for thought leadership'
+            ],
+            product_actions: [
+                'Analyze feature parity gaps',
+                'Add items to competitive roadmap review',
+                'Document technical differentiators'
+            ],
+            executive_actions: [
+                'Review strategic implications',
+                'Approve response budget if needed',
+                'Brief board if material competitive threat'
+            ]
+        },
+        'pricing_change': {
+            name: 'Pricing Change Response',
+            description: 'Response plan when a competitor changes their pricing',
+            trigger_signal_types: ['pricing_change'],
+            trigger_keywords: ['price', 'discount', 'promotion', 'cost'],
+            sales_actions: [
+                'Document new competitor pricing structure',
+                'Review active proposals for competitive risk',
+                'Prepare value justification talking points',
+                'Alert at-risk accounts proactively'
+            ],
+            marketing_actions: [
+                'Analyze pricing positioning',
+                'Update TCO/ROI calculators',
+                'Prepare value messaging campaign'
+            ],
+            product_actions: [
+                'Review packaging/bundling options',
+                'Assess feature value alignment'
+            ],
+            executive_actions: [
+                'Review pricing strategy implications',
+                'Approve any counter-pricing if needed'
+            ]
+        }
+    };
+    
+    const template = templates[type];
+    if (!template) return;
+    
+    try {
+        await fetchAPI('/playbooks', {
+            method: 'POST',
+            body: JSON.stringify({
+                ...template,
+                priority: 8
+            })
+        });
+        
+        showToast('Success', 'Playbook created from template!', 'success');
+        loadPlaybooks();
+    } catch (error) {
+        showToast('Error', error.message, 'danger');
+    }
+}
+
+function viewPlaybook(id) {
+    // For now, show in alert. Could expand to full detail page
+    fetchAPI(`/playbooks/${id}`).then(pb => {
+        let details = `
+Playbook: ${pb.name}
+Description: ${pb.description || 'N/A'}
+Priority: ${pb.priority}
+
+Triggers:
+- Signals: ${pb.trigger_signal_types.join(', ')}
+- Keywords: ${pb.trigger_keywords.join(', ')}
+
+Sales Actions:
+${pb.sales_actions.map(a => '• ' + a).join('\n')}
+
+Marketing Actions:
+${pb.marketing_actions.map(a => '• ' + a).join('\n')}
+
+Product Actions:
+${pb.product_actions.map(a => '• ' + a).join('\n')}
+
+Executive Actions:
+${pb.executive_actions.map(a => '• ' + a).join('\n')}
+        `;
+        alert(details);
+    });
+}
+
+// Auto-generate slug
+document.getElementById('playbookName').addEventListener('input', function() {
+    document.getElementById('slug').placeholder = this.value.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+});
+
+// Initialize
+document.addEventListener('DOMContentLoaded', loadPlaybooks);
+</script>
+{% endblock %}

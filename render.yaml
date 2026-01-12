@@ -1,0 +1,26 @@
+# Render.com Blueprint for CompIQ Backend
+# Deploy at: https://dashboard.render.com/
+
+services:
+  - type: web
+    name: compiq-api
+    env: python
+    region: oregon
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn run:app --bind 0.0.0.0:$PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.0"
+      - key: FLASK_ENV
+        value: production
+      - key: SECRET_KEY
+        generateValue: true
+      - key: AZURE_OPENAI_KEY
+        sync: false
+      - key: AZURE_OPENAI_ENDPOINT
+        sync: false
+      - key: AZURE_OPENAI_DEPLOYMENT
+        value: gpt-5-chat
+    healthCheckPath: /api/stats
+    autoDeploy: true
