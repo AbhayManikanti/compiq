@@ -190,18 +190,36 @@ function renderPagination(current, total) {
 }
 
 async function collectNews() {
-    showToast('Collecting', 'Gathering news articles...', 'info');
+    const btn = event.target.closest('button');
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Collecting...';
+    btn.disabled = true;
     
     try {
-        const result = await fetchAPI('/monitor/run', {
+        const competitorId = document.getElementById('filterCompetitor').value;
+        const result = await fetchAPI('/news/refresh', {
             method: 'POST',
-            body: JSON.stringify({ pages: false, news: true, analyze: true })
+            body: JSON.stringify({ 
+                competitor_id: competitorId ? parseInt(competitorId) : null,
+                days_back: 3
+            })
         });
         
-        showToast('Success', `Collected ${result.results.news_collected} articles`, 'success');
-        loadNews(1);
+        if (result.success) {
+            const msg = result.results.fetched > 0 
+                ? `Found ${result.results.fetched} new articles!` 
+                : 'No new articles found (duplicates were skipped)';
+            showToast('News Updated', msg, result.results.fetched > 0 ? 'success' : 'info');
+            loadNews(1);
+        } else {
+            showToast('Error', 'Failed to collect news', 'error');
+        }
     } catch (error) {
-        showToast('Error', 'Failed to collect news', 'error');
+        console.error('Error collecting news:', error);
+        showToast('Error', 'Failed to collect news: ' + error.message, 'error');
+    } finally {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
     }
 }
 

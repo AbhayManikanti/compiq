@@ -468,6 +468,55 @@ def list_news():
     })
 
 
+@api_bp.route('/news/refresh', methods=['POST'])
+def refresh_news():
+    """
+    Smart news refresh with deduplication and relevance filtering.
+    Only fetches new, non-duplicate, relevant news items.
+    """
+    from .news_collector import NewsCollector
+    
+    data = request.get_json() or {}
+    competitor_id = data.get('competitor_id')
+    days_back = data.get('days_back', 3)
+    
+    collector = NewsCollector()
+    results = {
+        'fetched': 0,
+        'duplicates_skipped': 0,
+        'new_items': [],
+        'competitors_processed': []
+    }
+    
+    if competitor_id:
+        competitors = [Competitor.query.get_or_404(competitor_id)]
+    else:
+        competitors = Competitor.query.filter_by(is_active=True).all()
+    
+    for competitor in competitors:
+        try:
+            items = collector.collect_competitor_news(competitor, days_back)
+            results['fetched'] += len(items)
+            results['competitors_processed'].append({
+                'name': competitor.name,
+                'new_items': len(items)
+            })
+            results['new_items'].extend([{
+                'title': item.title,
+                'source': item.source,
+                'competitor': competitor.name
+            } for item in items[:5]])  # Only return first 5 per competitor
+        except Exception as e:
+            import logging
+            logging.error(f"Error refreshing news for {competitor.name}: {e}")
+    
+    return jsonify({
+        'success': True,
+        'results': results,
+        'message': f"Collected {results['fetched']} new articles from {len(competitors)} competitors"
+    })
+
+
 # =============================================================================
 # API ROUTES - Monitor Actions
 # =============================================================================
@@ -901,6 +950,44 @@ def export_news_csv():
     csv_buffer = exporter.export_csv(data)
     
     filename = f"news_export_{datetime.now().strftime('%Y%m%d')}.csv"
+    return send_file(
+        io.BytesIO(csv_buffer.getvalue().encode('utf-8')),
+        mimetype='text/csv',
+        as_attachment=True,
+        download_name=filename
+    )
+
+
+@api_bp.route('/export/features/csv')
+def export_features_csv():
+    """Export feature comparison matrix as CSV."""
+    from .exporter import ReportExporter
+    
+    features = FeatureComparison.query.order_by(FeatureComparison.category, FeatureComparison.feature_name).all()
+    competitors = Competitor.query.filter_by(is_active=True).order_by(Competitor.name).all()
+    
+    data = []
+    for f in features:
+        row = {
+            'category': f.category,
+            'feature': f.feature_name,
+            'description': f.description or '',
+            'importance': f.customer_importance,
+            'our_capability': f.our_capability or '',
+            'our_details': f.our_details or ''
+        }
+        # Add competitor columns
+        comp_caps = json.loads(f.competitor_capabilities) if f.competitor_capabilities else {}
+        for c in competitors:
+            cap_data = comp_caps.get(str(c.id), {})
+            row[f'{c.name}_capability'] = cap_data.get('capability', '')
+            row[f'{c.name}_details'] = cap_data.get('details', '')
+        data.append(row)
+    
+    exporter = ReportExporter()
+    csv_buffer = exporter.export_csv(data)
+    
+    filename = f"feature_matrix_{datetime.now().strftime('%Y%m%d')}.csv"
     return send_file(
         io.BytesIO(csv_buffer.getvalue().encode('utf-8')),
         mimetype='text/csv',
