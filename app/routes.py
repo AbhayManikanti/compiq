@@ -5,6 +5,7 @@ from flask import Blueprint, render_template, jsonify, request, redirect, url_fo
 from datetime import datetime, timedelta
 import json
 import io
+import os
 from .database import (
     db, Alert, Competitor, MonitoredURL, PageSnapshot, NewsItem, Insight,
     AlertStatus, RiskLevel, SignalType,
