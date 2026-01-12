@@ -1242,18 +1242,52 @@ def teams_test():
     if not webhook_url:
         return jsonify({'success': False, 'error': 'Webhook not configured'}), 400
     
-    # Check if it's a Power Automate webhook
+    # Check if it's a Power Automate webhook (Teams webhook trigger)
     is_power_automate = 'powerplatform.com' in webhook_url or 'flow.microsoft.com' in webhook_url
     
     if is_power_automate:
-        # Power Automate expects a simpler JSON payload
+        # Power Automate with Teams webhook trigger expects Adaptive Card format
+        # The flow extracts "body" and posts it as an Adaptive Card
+        adaptive_card = {
+            "type": "AdaptiveCard",
+            "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+            "version": "1.4",
+            "body": [
+                {
+                    "type": "TextBlock",
+                    "text": "🔔 CompIQ Test Notification",
+                    "weight": "Bolder",
+                    "size": "Large",
+                    "color": "Accent"
+                },
+                {
+                    "type": "TextBlock",
+                    "text": "This is a test message from CompIQ Competitive Intelligence",
+                    "wrap": True
+                },
+                {
+                    "type": "FactSet",
+                    "facts": [
+                        {"title": "Status", "value": "✅ Connected Successfully"},
+                        {"title": "Time", "value": datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')}
+                    ]
+                }
+            ],
+            "actions": [
+                {
+                    "type": "Action.OpenUrl",
+                    "title": "Open CompIQ",
+                    "url": "https://compiq-app.azurewebsites.net"
+                }
+            ]
+        }
+        
+        # Send as the body content that the flow expects
         message = {
-            "type": "test",
-            "title": "🔔 CompIQ Test Notification",
-            "message": "This is a test message from CompIQ Competitive Intelligence",
-            "status": "Connected Successfully",
-            "timestamp": datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC'),
-            "source": "CompIQ"
+            "body": {
+                "contentType": "application/vnd.microsoft.card.adaptive",
+                "content": adaptive_card
+            }
         }
     else:
         # Standard Teams Incoming Webhook (MessageCard format)
@@ -1317,19 +1351,70 @@ def teams_send_alert():
     # Check if it's a Power Automate webhook
     is_power_automate = 'powerplatform.com' in webhook_url or 'flow.microsoft.com' in webhook_url
     
+    # Risk level colors and emojis
+    risk_colors = {
+        'critical': 'Attention',
+        'high': 'Warning', 
+        'medium': 'Accent',
+        'low': 'Good'
+    }
+    risk_emojis = {
+        'critical': '🔴',
+        'high': '🟠', 
+        'medium': '🟡',
+        'low': '🟢'
+    }
+    
     if is_power_automate:
-        # Power Automate expects a simpler JSON payload
+        # Power Automate with Teams webhook - send Adaptive Card
+        adaptive_card = {
+            "type": "AdaptiveCard",
+            "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+            "version": "1.4",
+            "body": [
+                {
+                    "type": "TextBlock",
+                    "text": f"🚨 {title}",
+                    "weight": "Bolder",
+                    "size": "Large",
+                    "wrap": True
+                },
+                {
+                    "type": "FactSet",
+                    "facts": [
+                        {"title": "Competitor", "value": competitor},
+                        {"title": "Risk Level", "value": f"{risk_emojis.get(risk_level, '⚪')} {risk_level.upper()}"},
+                        {"title": "Time", "value": datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}
+                    ]
+                },
+                {
+                    "type": "TextBlock",
+                    "text": summary[:300] if summary else 'No details available',
+                    "wrap": True,
+                    "spacing": "Medium"
+                }
+            ],
+            "actions": [
+                {
+                    "type": "Action.OpenUrl",
+                    "title": "View in CompIQ",
+                    "url": f"https://compiq-app.azurewebsites.net/alerts/{alert_id}" if alert_id else "https://compiq-app.azurewebsites.net/alerts"
+                }
+            ]
+        }
+        
+        if source_url:
+            adaptive_card["actions"].append({
+                "type": "Action.OpenUrl",
+                "title": "View Source",
+                "url": source_url
+            })
+        
         message = {
-            "type": "alert",
-            "alert_id": alert_id,
-            "title": title,
-            "summary": summary or 'No details',
-            "risk_level": risk_level,
-            "competitor": competitor,
-            "source_url": source_url or '',
-            "app_url": f"https://compiq-app.azurewebsites.net/alerts/{alert_id}" if alert_id else "https://compiq-app.azurewebsites.net/alerts",
-            "timestamp": datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC'),
-            "source": "CompIQ"
+            "body": {
+                "contentType": "application/vnd.microsoft.card.adaptive",
+                "content": adaptive_card
+            }
         }
     else:
         # Standard Teams Incoming Webhook (MessageCard format)
