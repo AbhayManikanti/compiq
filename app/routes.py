@@ -449,7 +449,7 @@ def list_news():
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 20, type=int)
     
-    query = NewsItem.query
+    query = NewsItem.query.filter_by(is_relevant=True)  # Only show relevant news
     
     if competitor_id:
         query = query.filter_by(competitor_id=competitor_id)
@@ -1194,6 +1194,159 @@ def google_alerts_sync():
 def integrations_page():
     """Integrations management page."""
     return render_template('integrations.html')
+
+
+# =============================================================================
+# MICROSOFT TEAMS INTEGRATION API
+# =============================================================================
+
+@api_bp.route('/integrations/teams/status')
+def teams_status():
+    """Get Microsoft Teams webhook configuration status."""
+    webhook_url = os.environ.get('TEAMS_WEBHOOK_URL', '')
+    
+    return jsonify({
+        'configured': bool(webhook_url),
+        'webhook_url': webhook_url[:50] + '...' if len(webhook_url) > 50 else webhook_url
+    })
+
+
+@api_bp.route('/integrations/teams/configure', methods=['POST'])
+def teams_configure():
+    """Configure Microsoft Teams webhook URL."""
+    data = request.get_json()
+    webhook_url = data.get('webhook_url', '').strip()
+    
+    if not webhook_url:
+        return jsonify({'success': False, 'error': 'Webhook URL is required'}), 400
+    
+    # Validate it looks like a Teams webhook
+    if 'webhook.office.com' not in webhook_url and 'logic.azure.com' not in webhook_url:
+        return jsonify({'success': False, 'error': 'Invalid Teams webhook URL format'}), 400
+    
+    # Store in environment (in production, this would go to a config store)
+    os.environ['TEAMS_WEBHOOK_URL'] = webhook_url
+    
+    return jsonify({'success': True, 'message': 'Teams webhook configured'})
+
+
+@api_bp.route('/integrations/teams/test', methods=['POST'])
+def teams_test():
+    """Send a test message to Microsoft Teams."""
+    import requests
+    
+    webhook_url = os.environ.get('TEAMS_WEBHOOK_URL', '')
+    
+    if not webhook_url:
+        return jsonify({'success': False, 'error': 'Teams webhook not configured'}), 400
+    
+    # Teams Adaptive Card message
+    message = {
+        "@type": "MessageCard",
+        "@context": "http://schema.org/extensions",
+        "themeColor": "0076D7",
+        "summary": "CompIQ Test Alert",
+        "sections": [{
+            "activityTitle": "🔔 CompIQ Test Notification",
+            "activitySubtitle": "This is a test message from CompIQ Competitive Intelligence",
+            "facts": [{
+                "name": "Status",
+                "value": "Connected Successfully"
+            }, {
+                "name": "Time",
+                "value": datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')
+            }],
+            "markdown": True
+        }]
+    }
+    
+    try:
+        response = requests.post(webhook_url, json=message, timeout=10)
+        if response.status_code == 200:
+            return jsonify({'success': True, 'message': 'Test message sent to Teams'})
+        else:
+            return jsonify({'success': False, 'error': f'Teams returned status {response.status_code}'}), 400
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/integrations/teams/send-alert', methods=['POST'])
+def teams_send_alert():
+    """Send an alert notification to Microsoft Teams."""
+    import requests
+    
+    webhook_url = os.environ.get('TEAMS_WEBHOOK_URL', '')
+    
+    if not webhook_url:
+        return jsonify({'success': False, 'error': 'Teams webhook not configured'}), 400
+    
+    data = request.get_json()
+    alert_id = data.get('alert_id')
+    
+    if alert_id:
+        alert = Alert.query.get_or_404(alert_id)
+        title = alert.title
+        summary = alert.summary
+        risk_level = alert.risk_level
+        competitor = alert.competitor.name if alert.competitor else 'Unknown'
+        source_url = alert.source_url
+    else:
+        title = data.get('title', 'New Alert')
+        summary = data.get('summary', '')
+        risk_level = data.get('risk_level', 'medium')
+        competitor = data.get('competitor', 'Unknown')
+        source_url = data.get('source_url', '')
+    
+    # Color based on risk level
+    colors = {
+        'critical': 'FF0000',
+        'high': 'FFA500', 
+        'medium': 'FFFF00',
+        'low': '00FF00'
+    }
+    
+    message = {
+        "@type": "MessageCard",
+        "@context": "http://schema.org/extensions",
+        "themeColor": colors.get(risk_level, '0076D7'),
+        "summary": f"CompIQ Alert: {title}",
+        "sections": [{
+            "activityTitle": f"🚨 {title}",
+            "activitySubtitle": f"Competitor: {competitor}",
+            "facts": [{
+                "name": "Risk Level",
+                "value": risk_level.upper()
+            }, {
+                "name": "Summary",
+                "value": summary[:200] if summary else 'No details'
+            }],
+            "markdown": True
+        }],
+        "potentialAction": [{
+            "@type": "OpenUri",
+            "name": "View in CompIQ",
+            "targets": [{
+                "os": "default",
+                "uri": f"https://compiq-app.azurewebsites.net/alerts/{alert_id}" if alert_id else "https://compiq-app.azurewebsites.net/alerts"
+            }]
+        }]
+    }
+    
+    if source_url:
+        message["potentialAction"].append({
+            "@type": "OpenUri",
+            "name": "View Source",
+            "targets": [{"os": "default", "uri": source_url}]
+        })
+    
+    try:
+        response = requests.post(webhook_url, json=message, timeout=10)
+        if response.status_code == 200:
+            return jsonify({'success': True, 'message': 'Alert sent to Teams'})
+        else:
+            return jsonify({'success': False, 'error': f'Teams returned status {response.status_code}'}), 400
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 
 # =============================================================================

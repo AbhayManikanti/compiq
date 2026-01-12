@@ -23,6 +23,93 @@
     </div>
 </div>
 
+<!-- View Playbook Detail Modal -->
+<div class="modal fade" id="playbookDetailModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title"><i class="bi bi-book me-2"></i><span id="detailPlaybookName">Playbook Details</span></h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row mb-4">
+                    <div class="col-md-8">
+                        <p id="detailDescription" class="lead text-muted"></p>
+                    </div>
+                    <div class="col-md-4 text-end">
+                        <span class="badge bg-primary fs-6" id="detailPriority">Priority: -</span>
+                        <span class="badge bg-success fs-6 ms-2" id="detailStatus">Active</span>
+                    </div>
+                </div>
+                
+                <div class="card mb-4">
+                    <div class="card-header bg-light">
+                        <h6 class="mb-0"><i class="bi bi-lightning me-2"></i>Triggers</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <strong>Signal Types:</strong>
+                                <div id="detailSignals" class="mt-2"></div>
+                            </div>
+                            <div class="col-md-6">
+                                <strong>Keywords:</strong>
+                                <div id="detailKeywords" class="mt-2"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <div class="card h-100 border-primary">
+                            <div class="card-header bg-primary text-white">
+                                <i class="bi bi-graph-up me-2"></i>Sales Actions
+                            </div>
+                            <div class="card-body">
+                                <ul class="list-group list-group-flush" id="detailSalesActions"></ul>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <div class="card h-100 border-success">
+                            <div class="card-header bg-success text-white">
+                                <i class="bi bi-megaphone me-2"></i>Marketing Actions
+                            </div>
+                            <div class="card-body">
+                                <ul class="list-group list-group-flush" id="detailMarketingActions"></ul>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <div class="card h-100 border-warning">
+                            <div class="card-header bg-warning text-dark">
+                                <i class="bi bi-box me-2"></i>Product Actions
+                            </div>
+                            <div class="card-body">
+                                <ul class="list-group list-group-flush" id="detailProductActions"></ul>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <div class="card h-100 border-danger">
+                            <div class="card-header bg-danger text-white">
+                                <i class="bi bi-briefcase me-2"></i>Executive Actions
+                            </div>
+                            <div class="card-body">
+                                <ul class="list-group list-group-flush" id="detailExecutiveActions"></ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Create Playbook Modal -->
 <div class="modal fade" id="playbookModal" tabindex="-1">
     <div class="modal-dialog modal-xl">
@@ -316,30 +403,43 @@ async function createTemplatePlaybook(type) {
 }
 
 function viewPlaybook(id) {
-    // For now, show in alert. Could expand to full detail page
     fetchAPI(`/playbooks/${id}`).then(pb => {
-        let details = `
-Playbook: ${pb.name}
-Description: ${pb.description || 'N/A'}
-Priority: ${pb.priority}
-
-Triggers:
-- Signals: ${pb.trigger_signal_types.join(', ')}
-- Keywords: ${pb.trigger_keywords.join(', ')}
-
-Sales Actions:
-${pb.sales_actions.map(a => '• ' + a).join('\n')}
-
-Marketing Actions:
-${pb.marketing_actions.map(a => '• ' + a).join('\n')}
-
-Product Actions:
-${pb.product_actions.map(a => '• ' + a).join('\n')}
-
-Executive Actions:
-${pb.executive_actions.map(a => '• ' + a).join('\n')}
-        `;
-        alert(details);
+        // Populate modal
+        document.getElementById('detailPlaybookName').textContent = pb.name;
+        document.getElementById('detailDescription').textContent = pb.description || 'No description provided';
+        document.getElementById('detailPriority').textContent = `Priority: ${pb.priority}`;
+        document.getElementById('detailStatus').textContent = pb.is_active ? 'Active' : 'Inactive';
+        document.getElementById('detailStatus').className = `badge fs-6 ms-2 bg-${pb.is_active ? 'success' : 'secondary'}`;
+        
+        // Signals
+        document.getElementById('detailSignals').innerHTML = pb.trigger_signal_types.length > 0 
+            ? pb.trigger_signal_types.map(t => `<span class="badge bg-info me-1 mb-1">${t.replace('_', ' ')}</span>`).join('')
+            : '<span class="text-muted">No signal types defined</span>';
+        
+        // Keywords
+        document.getElementById('detailKeywords').innerHTML = pb.trigger_keywords.length > 0 
+            ? pb.trigger_keywords.map(k => `<span class="badge bg-secondary me-1 mb-1">${k}</span>`).join('')
+            : '<span class="text-muted">No keywords defined</span>';
+        
+        // Actions lists
+        const renderActions = (actions, elementId) => {
+            const el = document.getElementById(elementId);
+            if (actions && actions.length > 0) {
+                el.innerHTML = actions.map(a => `<li class="list-group-item"><i class="bi bi-check2 text-success me-2"></i>${a}</li>`).join('');
+            } else {
+                el.innerHTML = '<li class="list-group-item text-muted">No actions defined</li>';
+            }
+        };
+        
+        renderActions(pb.sales_actions, 'detailSalesActions');
+        renderActions(pb.marketing_actions, 'detailMarketingActions');
+        renderActions(pb.product_actions, 'detailProductActions');
+        renderActions(pb.executive_actions, 'detailExecutiveActions');
+        
+        // Show modal
+        new bootstrap.Modal(document.getElementById('playbookDetailModal')).show();
+    }).catch(err => {
+        showToast('Error', 'Failed to load playbook details', 'danger');
     });
 }
 
