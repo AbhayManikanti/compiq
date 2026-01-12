@@ -31,15 +31,16 @@ def create_directories():
         os.makedirs(directory, exist_ok=True)
 
 
+# Create directories on import
+create_directories()
+
+# Import and create app at module level for gunicorn
+from app import create_app
+app = create_app()
+
+
 def main():
-    """Main entry point."""
-    create_directories()
-    
-    # Import app after directories are created
-    from app import create_app
-    
-    app = create_app()
-    
+    """Main entry point for local development."""
     # Get configuration from environment
     host = os.getenv('FLASK_HOST', '0.0.0.0')
     port = int(os.getenv('FLASK_PORT', 5000))
