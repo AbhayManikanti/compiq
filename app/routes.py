@@ -1718,16 +1718,15 @@ def populate_demo_data():
     import random
     
     # Check if already populated
-    if Competitor.query.count() >= 5:
+    if Competitor.query.count() >= 4:
         return jsonify({'message': 'Demo data already exists', 'populated': False})
     
     try:
-        # Create competitors
+        # Create competitors - Focus on Hioki as primary competitor, remove Tektronix
         competitors_data = [
+            {'name': 'Hioki', 'description': 'Japanese manufacturer of electrical measuring instruments, primary competitor in DMM and power analyzers', 'website': 'https://www.hioki.com'},
             {'name': 'Keysight Technologies', 'description': 'Leading electronic measurement company', 'website': 'https://www.keysight.com'},
-            {'name': 'Hioki', 'description': 'Japanese manufacturer of electrical measuring instruments', 'website': 'https://www.hioki.com'},
             {'name': 'Rohde & Schwarz', 'description': 'German technology company in T&M', 'website': 'https://www.rohde-schwarz.com'},
-            {'name': 'Tektronix', 'description': 'Leading oscilloscope manufacturer', 'website': 'https://www.tek.com'},
             {'name': 'National Instruments', 'description': 'Automated test equipment', 'website': 'https://www.ni.com'},
         ]
         
@@ -1741,6 +1740,9 @@ def populate_demo_data():
                 db.session.add(c)
                 db.session.flush()
                 competitors.append(c)
+        
+        # Get Hioki competitor for focused alerts
+        hioki = next((c for c in competitors if c.name == 'Hioki'), competitors[0])
         
         # Create monitored URLs
         url_types = ['product_page', 'pricing_page', 'press_room', 'careers', 'changelog']
@@ -1757,69 +1759,166 @@ def populate_demo_data():
                     )
                     db.session.add(url)
         
-        # Create alerts
-        alert_templates = [
-            {'signal_type': 'product_launch', 'risk_level': 'high', 'title': '{} Launches New 8-Channel Oscilloscope'},
-            {'signal_type': 'pricing_change', 'risk_level': 'medium', 'title': '{} Announces 15% Price Reduction'},
-            {'signal_type': 'partnership', 'risk_level': 'high', 'title': '{} Partners with Major Semiconductor Manufacturer'},
-            {'signal_type': 'feature_update', 'risk_level': 'medium', 'title': '{} Adds AI-Powered Analysis'},
-            {'signal_type': 'expansion', 'risk_level': 'low', 'title': '{} Opens New R&D Center'},
-            {'signal_type': 'leadership_change', 'risk_level': 'medium', 'title': '{} Appoints New VP of Product'},
+        # Create Hioki-focused alerts
+        hioki_alerts = [
+            {'signal_type': 'product_launch', 'risk_level': 'critical', 'title': 'Hioki Launches New DT4282 Digital Multimeter', 'summary': 'Hioki has announced the DT4282, a new high-end DMM targeting industrial applications with improved accuracy.'},
+            {'signal_type': 'pricing_change', 'risk_level': 'high', 'title': 'Hioki Announces 20% Price Reduction in North America', 'summary': 'Aggressive pricing move by Hioki to gain market share in the North American industrial DMM market.'},
+            {'signal_type': 'feature_update', 'risk_level': 'medium', 'title': 'Hioki Adds Bluetooth Connectivity to Power Analyzers', 'summary': 'New wireless data transfer capability added to PW3390 power analyzer series.'},
         ]
         
-        for i, template in enumerate(alert_templates):
-            comp = random.choice(competitors)
+        for template in hioki_alerts:
+            alert = Alert(
+                competitor_id=hioki.id,
+                source_type='news',
+                signal_type=template['signal_type'],
+                risk_level=template['risk_level'],
+                title=template['title'],
+                summary=template['summary'],
+                status='new',
+                detected_at=datetime.utcnow() - timedelta(days=random.randint(0, 7)),
+                source_url='https://www.hioki.com/news'
+            )
+            db.session.add(alert)
+        
+        # Add other competitor alerts
+        other_alerts = [
+            {'comp': 'Keysight Technologies', 'signal_type': 'partnership', 'risk_level': 'high', 'title': 'Keysight Partners with Major Semiconductor Manufacturer'},
+            {'comp': 'Rohde & Schwarz', 'signal_type': 'expansion', 'risk_level': 'low', 'title': 'Rohde & Schwarz Opens New R&D Center in Austin'},
+        ]
+        for template in other_alerts:
+            comp = next((c for c in competitors if c.name == template['comp']), competitors[1])
             alert = Alert(
                 competitor_id=comp.id,
                 source_type='page_change',
                 signal_type=template['signal_type'],
                 risk_level=template['risk_level'],
-                title=template['title'].format(comp.name),
-                summary='Demo alert for demonstration purposes.',
-                status='new' if i < 3 else random.choice(['acknowledged', 'in_progress', 'resolved']),
-                detected_at=datetime.utcnow() - timedelta(days=random.randint(0, 14)),
-                source_url=f"{comp.website}/news"
+                title=template['title'],
+                summary='Competitive intelligence alert.',
+                status='acknowledged',
+                detected_at=datetime.utcnow() - timedelta(days=random.randint(5, 14)),
+                source_url=comp.website
             )
             db.session.add(alert)
         
-        # Create battle cards
-        for comp in competitors[:3]:
+        # Create Hioki news items
+        hioki_news = [
+            {'title': 'Hioki Reports Strong Q4 Growth in Test & Measurement', 'source': 'Google News'},
+            {'title': 'Hioki Showcases New Power Analyzer at Embedded World 2026', 'source': 'Trade Publication'},
+            {'title': 'Hioki Expands Distribution Network in Southeast Asia', 'source': 'Company Press Release'},
+            {'title': 'Hioki DT4282 Review: A Serious Contender for Industrial DMM Market', 'source': 'Electronics Weekly'},
+            {'title': 'Hioki Announces Partnership with EV Battery Manufacturer', 'source': 'Industry News'},
+        ]
+        for news_data in hioki_news:
+            news = NewsItem(
+                competitor_id=hioki.id,
+                title=news_data['title'],
+                source=news_data['source'],
+                url=f"https://news.example.com/hioki/{random.randint(1000, 9999)}",
+                published_at=datetime.utcnow() - timedelta(days=random.randint(1, 30)),
+                collected_at=datetime.utcnow(),
+                is_processed=True,
+                is_relevant=True
+            )
+            db.session.add(news)
+        
+        # Create battle cards - Focus on Hioki
+        hioki_card = BattleCard(
+            competitor_id=hioki.id,
+            name="Hioki vs Fluke Battle Card",
+            elevator_pitch="When competing against Hioki, emphasize Fluke's superior ruggedness, industry-leading accuracy in harsh environments, and unmatched global service network. Hioki excels in lab settings but Fluke wins in the field.",
+            target_segment="Industrial Manufacturing, Field Service, Utilities",
+            our_strengths=json.dumps([
+                "Best-in-class CAT IV safety ratings",
+                "Industry-leading drop test durability",
+                "Superior low-impedance voltage detection",
+                "Global service network with 24/7 support",
+                "Extensive accessory ecosystem"
+            ]),
+            our_weaknesses=json.dumps([
+                "Higher price point on some models",
+                "Fewer connectivity options on entry-level models"
+            ]),
+            competitor_strengths=json.dumps([
+                "Strong presence in Japanese market",
+                "Good accuracy specifications",
+                "Lower price point on comparable models",
+                "Strong in power analysis segment"
+            ]),
+            competitor_weaknesses=json.dumps([
+                "Limited global service network",
+                "Less rugged for field use",
+                "Smaller accessory ecosystem",
+                "Weaker brand recognition outside Asia"
+            ]),
+            key_differentiators=json.dumps([
+                "Fluke DMMs survive 3-meter drop tests; Hioki typically rated for 1m",
+                "Fluke FieldSense technology for non-contact voltage measurement",
+                "True-RMS accuracy in noisy electrical environments",
+                "Lifetime warranty on most models vs Hioki's 3-year warranty"
+            ]),
+            trap_questions=json.dumps([
+                "Ask about drop test ratings and field durability",
+                "Inquire about global service and calibration network",
+                "Ask about low-impedance voltage detection for ghost voltage",
+                "Request references from similar harsh-environment applications"
+            ]),
+            landmine_questions=json.dumps([
+                "If they mention Hioki's lower price, pivot to TCO and reliability",
+                "If they mention Hioki's accuracy, discuss real-world vs lab conditions"
+            ]),
+            common_objections=json.dumps([
+                {"objection": "Hioki is cheaper", "response": "When you factor in durability, calibration costs, and downtime, Fluke delivers 30% lower TCO over 5 years."},
+                {"objection": "We've used Hioki before", "response": "Many customers switching from Hioki report fewer tool replacements and faster troubleshooting with Fluke's FieldSense technology."}
+            ]),
+            status='active'
+        )
+        db.session.add(hioki_card)
+        
+        # Add cards for other competitors
+        for comp in competitors[1:3]:
             card = BattleCard(
                 competitor_id=comp.id,
                 name=f"{comp.name} Battle Card",
-                elevator_pitch=f"When competing against {comp.name}, emphasize our superior accuracy and support.",
+                elevator_pitch=f"When competing against {comp.name}, emphasize Fluke's field-proven reliability and comprehensive support.",
                 target_segment="Industrial Manufacturing",
-                our_strengths=json.dumps(["Best-in-class accuracy", "Industry-leading warranty", "Comprehensive support"]),
-                competitor_weaknesses=json.dumps(["Limited service network", "Slower product cycles"]),
-                key_differentiators=json.dumps(["20% better accuracy", "24/7 support with 4-hour SLA"]),
-                trap_questions=json.dumps(["Ask about calibration intervals", "Inquire about support response times"]),
+                our_strengths=json.dumps(["Best-in-class durability", "Industry-leading warranty", "Global support"]),
+                competitor_weaknesses=json.dumps(["Limited field service", "Less rugged designs"]),
+                key_differentiators=json.dumps(["Superior drop test ratings", "FieldSense technology"]),
+                trap_questions=json.dumps(["Ask about field durability", "Inquire about service network"]),
                 status='active'
             )
             db.session.add(card)
         
-        # Create win/loss records
+        # Create win/loss records - Include Hioki wins and losses
         wl_data = [
-            {'outcome': 'won', 'deal_name': 'Automotive Tier 1 Test', 'deal_value': 450000},
-            {'outcome': 'lost', 'deal_name': 'Aerospace MRO Equipment', 'deal_value': 320000, 'primary_loss_reason': 'pricing'},
-            {'outcome': 'won', 'deal_name': 'Semiconductor Fab Expansion', 'deal_value': 890000},
+            {'outcome': 'won', 'deal_name': 'Automotive Tier 1 - Production Line Test', 'deal_value': 450000, 'comp': 'Hioki', 'win_reasons': 'Fluke won on durability and service network'},
+            {'outcome': 'lost', 'deal_name': 'University Research Lab', 'deal_value': 75000, 'comp': 'Hioki', 'primary_loss_reason': 'pricing', 'key_learnings': 'Hioki won on price; need better academic pricing'},
+            {'outcome': 'won', 'deal_name': 'Utility Field Service Fleet', 'deal_value': 320000, 'comp': 'Hioki', 'win_reasons': 'FieldSense and ruggedness were key differentiators'},
+            {'outcome': 'won', 'deal_name': 'Semiconductor Fab Expansion', 'deal_value': 890000, 'comp': 'Keysight Technologies'},
+            {'outcome': 'lost', 'deal_name': 'Telecom Test Lab', 'deal_value': 180000, 'comp': 'Rohde & Schwarz', 'primary_loss_reason': 'feature_gap'},
         ]
         for wl in wl_data:
+            comp = next((c for c in competitors if c.name == wl['comp']), competitors[0])
             record = WinLossRecord(
-                competitor_id=random.choice(competitors).id,
+                competitor_id=comp.id,
                 outcome=wl['outcome'],
                 deal_name=wl['deal_name'],
                 deal_value=wl['deal_value'],
-                customer_name='Demo Customer',
-                outcome_date=datetime.utcnow() - timedelta(days=random.randint(10, 60)),
-                primary_loss_reason=wl.get('primary_loss_reason')
+                customer_name='Enterprise Customer',
+                customer_industry='Manufacturing',
+                outcome_date=datetime.utcnow() - timedelta(days=random.randint(10, 90)),
+                primary_loss_reason=wl.get('primary_loss_reason'),
+                key_learnings=wl.get('key_learnings', '')
             )
             db.session.add(record)
         
-        # Create feature comparisons
+        # Create feature comparisons - Hioki focused
         features = [
-            {'category': 'Accuracy', 'feature_name': 'DC Voltage Accuracy', 'importance': 9, 'our_capability': 'full'},
-            {'category': 'Connectivity', 'feature_name': 'Cloud Data Sync', 'importance': 7, 'our_capability': 'full'},
-            {'category': 'Safety', 'feature_name': 'CAT IV Rating', 'importance': 10, 'our_capability': 'full'},
+            {'category': 'Durability', 'feature_name': 'Drop Test Rating', 'importance': 10, 'our_capability': 'full', 'our_details': '3-meter drop test', 'hioki': 'partial', 'hioki_details': '1-meter drop test'},
+            {'category': 'Accuracy', 'feature_name': 'DC Voltage Accuracy', 'importance': 9, 'our_capability': 'full', 'our_details': '0.025% + 2 counts', 'hioki': 'full', 'hioki_details': '0.025% + 3 counts'},
+            {'category': 'Safety', 'feature_name': 'CAT IV 600V Rating', 'importance': 10, 'our_capability': 'full', 'our_details': 'Standard on industrial models', 'hioki': 'partial', 'hioki_details': 'Limited models'},
+            {'category': 'Features', 'feature_name': 'Non-Contact Voltage', 'importance': 8, 'our_capability': 'full', 'our_details': 'FieldSense technology', 'hioki': 'none', 'hioki_details': 'Not available'},
+            {'category': 'Support', 'feature_name': 'Global Service Network', 'importance': 7, 'our_capability': 'full', 'our_details': '100+ countries', 'hioki': 'partial', 'hioki_details': 'Limited outside Asia'},
         ]
         for feat in features:
             fc = FeatureComparison(
@@ -1827,9 +1926,9 @@ def populate_demo_data():
                 feature_name=feat['feature_name'],
                 customer_importance=feat['importance'],
                 our_capability=feat['our_capability'],
+                our_details=feat['our_details'],
                 competitor_capabilities=json.dumps({
-                    str(competitors[0].id): {'capability': 'partial'},
-                    str(competitors[1].id): {'capability': 'full'},
+                    str(hioki.id): {'capability': feat['hioki'], 'details': feat['hioki_details']},
                 })
             )
             db.session.add(fc)
@@ -1843,9 +1942,32 @@ def populate_demo_data():
                 'competitors': Competitor.query.count(),
                 'urls': MonitoredURL.query.count(),
                 'alerts': Alert.query.count(),
+                'news': NewsItem.query.count(),
                 'battle_cards': BattleCard.query.count(),
+                'win_loss': WinLossRecord.query.count(),
             }
         })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+
+@api_bp.route('/demo/reset', methods=['POST'])
+def reset_demo_data():
+    """Reset all demo data."""
+    try:
+        # Delete all data
+        FeatureComparison.query.delete()
+        WinLossRecord.query.delete()
+        BattleCard.query.delete()
+        Insight.query.delete()
+        NewsItem.query.delete()
+        Alert.query.delete()
+        MonitoredURL.query.delete()
+        Competitor.query.delete()
+        db.session.commit()
+        
+        return jsonify({'message': 'All data reset successfully', 'reset': True})
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500

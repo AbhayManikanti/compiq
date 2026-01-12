@@ -82,4 +82,17 @@ def create_app():
     app.register_blueprint(main_bp)
     app.register_blueprint(api_bp, url_prefix='/api')
     
+    # Register custom Jinja filters
+    import json
+    
+    @app.template_filter('from_json')
+    def from_json_filter(value):
+        """Parse JSON string to Python object."""
+        if not value:
+            return []
+        try:
+            return json.loads(value)
+        except (json.JSONDecodeError, TypeError):
+            return []
+    
     return app
