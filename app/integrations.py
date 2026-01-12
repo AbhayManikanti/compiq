@@ -369,3 +369,8 @@ class DataCollectionManager:
             status['changedetection']['watches'] = len(watches) if isinstance(watches, dict) else 0
         
         return status
+
+
+# Aliases for backward compatibility
+ChangeDetectionIntegration = ChangeDetectionIO
+GoogleAlertsIntegration = GoogleAlertsRSS
