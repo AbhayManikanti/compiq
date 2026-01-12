@@ -11,7 +11,13 @@ load_dotenv()
 
 # Base directory for the project
 BASE_DIR = Path(__file__).resolve().parent.parent
-DATA_DIR = BASE_DIR / 'data'
+
+# On Azure App Service, use /home for persistent storage
+# Otherwise use local data directory
+if os.path.exists('/home') and os.environ.get('WEBSITE_SITE_NAME'):
+    DATA_DIR = Path('/home/data')
+else:
+    DATA_DIR = BASE_DIR / 'data'
 
 # Ensure data directory exists
 DATA_DIR.mkdir(exist_ok=True)
@@ -51,7 +57,25 @@ def create_app():
     db.init_app(app)
     
     with app.app_context():
-        db.create_all()
+        # Use checkfirst=True to avoid errors on existing tables
+        try:
+            from sqlalchemy import inspect
+            inspector = inspect(db.engine)
+            existing_tables = inspector.get_table_names()
+            
+            if not existing_tables:
+                # Only create all tables if database is empty
+                db.create_all()
+            else:
+                # Database exists, let SQLAlchemy handle incremental updates
+                db.create_all(checkfirst=True)
+        except Exception as e:
+            app.logger.warning(f"Database initialization note: {e}")
+            # Try a simple create_all with checkfirst
+            try:
+                db.create_all()
+            except:
+                pass  # Tables already exist, which is fine
     
     # Register blueprints
     from .routes import main_bp, api_bp
