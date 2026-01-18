@@ -232,14 +232,8 @@ electronic test tools, biomedical equipment, and networking solutions.
                     "url": alert.source_url
                 })
             
-            message = {
-                "body": {
-                    "contentType": "application/vnd.microsoft.card.adaptive",
-                    "content": adaptive_card
-                }
-            }
-            
-            response = requests.post(webhook_url, json=message, timeout=15)
+            # Send raw Adaptive Card directly - Power Automate flow passes it to Teams
+            response = requests.post(webhook_url, json=adaptive_card, timeout=15)
             if response.status_code in [200, 202]:
                 alert.notification_sent = True
                 alert.notification_channels = (channels + ',teams').strip(',')

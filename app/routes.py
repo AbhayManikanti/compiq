@@ -1282,13 +1282,8 @@ def teams_test():
             ]
         }
         
-        # Send as the body content that the flow expects
-        message = {
-            "body": {
-                "contentType": "application/vnd.microsoft.card.adaptive",
-                "content": adaptive_card
-            }
-        }
+        # Send raw Adaptive Card directly - Power Automate flow passes it to Teams
+        message = adaptive_card
     else:
         # Standard Teams Incoming Webhook (MessageCard format)
         message = {
@@ -1410,12 +1405,8 @@ def teams_send_alert():
                 "url": source_url
             })
         
-        message = {
-            "body": {
-                "contentType": "application/vnd.microsoft.card.adaptive",
-                "content": adaptive_card
-            }
-        }
+        # Send raw Adaptive Card directly - Power Automate flow passes it to Teams
+        message = adaptive_card
     else:
         # Standard Teams Incoming Webhook (MessageCard format)
         colors = {
@@ -1555,13 +1546,8 @@ def send_alert_to_teams(alert: Alert) -> bool:
             "url": source_url
         })
     
-    # Power Automate expects this structure
-    message = {
-        "body": {
-            "contentType": "application/vnd.microsoft.card.adaptive",
-            "content": adaptive_card
-        }
-    }
+    # Send raw Adaptive Card directly - Power Automate flow passes it to Teams
+    message = adaptive_card
     
     try:
         response = req.post(webhook_url, json=message, timeout=15)
@@ -1638,6 +1624,29 @@ def teams_stats():
         'sent_to_teams': sent_to_teams,
         'not_sent': not_sent,
         'webhook_configured': bool(os.environ.get('TEAMS_WEBHOOK_URL', ''))
+    })
+
+
+@api_bp.route('/integrations/teams/reset', methods=['POST'])
+def teams_reset():
+    """Reset Teams notification status for all alerts (allows re-sync)."""
+    # Clear teams from notification_channels for all alerts
+    alerts = Alert.query.all()
+    count = 0
+    for alert in alerts:
+        channels = alert.notification_channels or ''
+        if 'teams' in channels:
+            # Remove 'teams' from channels
+            new_channels = ','.join([c for c in channels.split(',') if c != 'teams'])
+            alert.notification_channels = new_channels if new_channels else None
+            count += 1
+    
+    db.session.commit()
+    
+    return jsonify({
+        'success': True,
+        'reset_count': count,
+        'message': f'Reset Teams notification status for {count} alerts'
     })
 
 
