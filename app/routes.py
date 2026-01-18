@@ -1104,6 +1104,129 @@ def changedetection_sync():
         return jsonify({'error': str(e)}), 500
 
 
+# =============================================================================
+# NEWSAPI INTEGRATION
+# =============================================================================
+
+@api_bp.route('/integrations/newsapi/status')
+def newsapi_status():
+    """Get NewsAPI configuration status."""
+    import os
+    
+    newsapi_key = os.environ.get('NEWSAPI_KEY', '')
+    is_configured = newsapi_key and 'your-' not in newsapi_key.lower() and len(newsapi_key) > 10
+    
+    news_count = NewsItem.query.count()
+    
+    return jsonify({
+        'configured': is_configured,
+        'news_count': news_count
+    })
+
+
+@api_bp.route('/integrations/newsapi/search', methods=['POST'])
+def newsapi_search():
+    """Search NewsAPI for a specific query."""
+    from .news_collector import NewsCollector
+    import os
+    
+    newsapi_key = os.environ.get('NEWSAPI_KEY', '')
+    if not newsapi_key or 'your-' in newsapi_key.lower():
+        return jsonify({'error': 'NewsAPI key not configured'}), 400
+    
+    data = request.get_json()
+    query = data.get('query')
+    
+    if not query:
+        return jsonify({'error': 'Query is required'}), 400
+    
+    try:
+        collector = NewsCollector()
+        articles = collector.fetch_newsapi(query)
+        
+        # Save articles to database
+        new_items = 0
+        for article in articles:
+            # Check for duplicates
+            existing = NewsItem.query.filter_by(url=article.get('url', '')).first()
+            if not existing and article.get('url'):
+                news_item = NewsItem(
+                    title=article.get('title', '')[:500],
+                    description=article.get('description', '')[:2000] if article.get('description') else None,
+                    content=article.get('content', '')[:10000] if article.get('content') else None,
+                    url=article.get('url', '')[:1000],
+                    source=article.get('source', 'NewsAPI')[:255],
+                    author=article.get('author', '')[:255] if article.get('author') else None,
+                    published_at=article.get('published_at'),
+                    is_processed=False,
+                    is_relevant=True
+                )
+                db.session.add(news_item)
+                new_items += 1
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'articles_fetched': len(articles),
+            'new_items': new_items
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@api_bp.route('/integrations/newsapi/fetch-all', methods=['POST'])
+def newsapi_fetch_all():
+    """Fetch news for all competitors from NewsAPI."""
+    from .news_collector import NewsCollector
+    import os
+    
+    newsapi_key = os.environ.get('NEWSAPI_KEY', '')
+    if not newsapi_key or 'your-' in newsapi_key.lower():
+        return jsonify({'error': 'NewsAPI key not configured'}), 400
+    
+    try:
+        collector = NewsCollector()
+        competitors = Competitor.query.filter_by(is_active=True).all()
+        
+        total_articles = 0
+        new_items = 0
+        
+        for competitor in competitors:
+            # Fetch news for each competitor
+            articles = collector.fetch_newsapi(competitor.name)
+            total_articles += len(articles)
+            
+            for article in articles:
+                # Check for duplicates
+                existing = NewsItem.query.filter_by(url=article.get('url', '')).first()
+                if not existing and article.get('url'):
+                    news_item = NewsItem(
+                        competitor_id=competitor.id,
+                        title=article.get('title', '')[:500],
+                        description=article.get('description', '')[:2000] if article.get('description') else None,
+                        content=article.get('content', '')[:10000] if article.get('content') else None,
+                        url=article.get('url', '')[:1000],
+                        source=article.get('source', 'NewsAPI')[:255],
+                        author=article.get('author', '')[:255] if article.get('author') else None,
+                        published_at=article.get('published_at'),
+                        is_processed=False,
+                        is_relevant=True
+                    )
+                    db.session.add(news_item)
+                    new_items += 1
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'total_articles': total_articles,
+            'new_items': new_items
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 @api_bp.route('/integrations/google-alerts/status')
 def google_alerts_status():
     """Get Google Alerts configuration status."""

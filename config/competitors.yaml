@@ -7,6 +7,17 @@ competitors:
   - name: "Hioki"
     description: "Japanese test and measurement equipment manufacturer. Major competitor in digital multimeters, clamp meters, power analyzers, and insulation testers."
     website: "https://www.hioki.com"
+    keywords:
+      - "Hioki"
+      - "Hioki multimeter"
+      - "Hioki clamp meter"
+      - "Hioki power analyzer"
+      - "Hioki insulation tester"
+      - "Hioki vs Fluke"
+      - "Hioki new product"
+      - "Hioki DT4282"
+      - "Hioki CM4375"
+      - "Hioki PW3198"
     urls:
       - url: "https://www.hioki.com/global/products/testers"
         name: "Handheld Digital Multimeters (DMMs)"
@@ -48,35 +59,122 @@ competitors:
         type: "news_page"
         check_interval_hours: 12
 
+  # Keysight Technologies
+  - name: "Keysight Technologies"
+    description: "Leading electronic measurement company, strong in oscilloscopes, signal analyzers, and network analyzers."
+    website: "https://www.keysight.com"
+    keywords:
+      - "Keysight"
+      - "Keysight Technologies"
+      - "Keysight oscilloscope"
+      - "Keysight multimeter"
+      - "Keysight signal analyzer"
+      - "Keysight vs Fluke"
+      - "Keysight new product"
+      - "Keysight acquisition"
+      - "Keysight 34465A"
+      - "Keysight InfiniiVision"
+
+  # Rohde & Schwarz
+  - name: "Rohde & Schwarz"
+    description: "German technology company specializing in electronics for test and measurement, broadcast and media, and secure communications."
+    website: "https://www.rohde-schwarz.com"
+    keywords:
+      - "Rohde Schwarz"
+      - "Rohde & Schwarz"
+      - "R&S oscilloscope"
+      - "Rohde Schwarz test equipment"
+      - "R&S signal analyzer"
+      - "Rohde Schwarz new product"
+      - "R&S RTO6"
+      - "R&S RTM"
+
+  # National Instruments (NI)
+  - name: "National Instruments"
+    description: "American multinational company with headquarters in Austin, Texas, producing automated test equipment and virtual instrumentation software."
+    website: "https://www.ni.com"
+    keywords:
+      - "National Instruments"
+      - "NI test equipment"
+      - "NI LabVIEW"
+      - "NI PXI"
+      - "National Instruments acquisition"
+      - "NI DAQ"
+      - "NI new product"
+      - "Emerson National Instruments"
+
+  # Tektronix
+  - name: "Tektronix"
+    description: "American company best known for manufacturing test and measurement devices such as oscilloscopes, logic analyzers, and video signal generators."
+    website: "https://www.tek.com"
+    keywords:
+      - "Tektronix"
+      - "Tektronix oscilloscope"
+      - "Tektronix DMM"
+      - "Tektronix vs Fluke"
+      - "Tektronix new product"
+      - "Tektronix MSO"
+      - "Tektronix TBS"
+
+  # Amprobe
+  - name: "Amprobe"
+    description: "Manufacturer of electrical test tools, a Fluke company but operates independently in some markets."
+    website: "https://www.amprobe.com"
+    keywords:
+      - "Amprobe"
+      - "Amprobe multimeter"
+      - "Amprobe clamp meter"
+      - "Amprobe new product"
+
+  # Klein Tools
+  - name: "Klein Tools"
+    description: "American company manufacturing hand tools and occupational protective equipment, including electrical test equipment."
+    website: "https://www.kleintools.com"
+    keywords:
+      - "Klein Tools"
+      - "Klein multimeter"
+      - "Klein electrical tester"
+      - "Klein vs Fluke"
+      - "Klein new product"
+      - "Klein MM700"
+
 # News Sources
 # RSS feeds and search terms for news monitoring
 news_sources:
   rss_feeds:
-    # Google News RSS for Hioki
+    # Google News RSS for all competitors
     - url: "https://news.google.com/rss/search?q=Hioki+test+measurement"
       name: "Hioki Test Measurement News"
       
     - url: "https://news.google.com/rss/search?q=Hioki+multimeter"
       name: "Hioki Multimeter News"
       
-    - url: "https://news.google.com/rss/search?q=Hioki+clamp+meter"
-      name: "Hioki Clamp Meter News"
-    
-    - url: "https://news.google.com/rss/search?q=Hioki+power+analyzer"
-      name: "Hioki Power Analyzer News"
+    - url: "https://news.google.com/rss/search?q=Keysight+Technologies"
+      name: "Keysight Technologies News"
       
-    - url: "https://news.google.com/rss/search?q=Hioki+insulation+tester"
-      name: "Hioki Insulation Tester News"
+    - url: "https://news.google.com/rss/search?q=Rohde+Schwarz+test+measurement"
+      name: "Rohde & Schwarz News"
+      
+    - url: "https://news.google.com/rss/search?q=National+Instruments+test"
+      name: "National Instruments News"
+      
+    - url: "https://news.google.com/rss/search?q=Tektronix+oscilloscope"
+      name: "Tektronix News"
+    
+    - url: "https://news.google.com/rss/search?q=Klein+Tools+electrical"
+      name: "Klein Tools News"
 
   search_terms:
     - "Hioki"
-    - "Hioki multimeter"
-    - "Hioki clamp meter"
-    - "Hioki power analyzer"
-    - "Hioki insulation tester"
-    - "Hioki vs Fluke"
-    - "Hioki new product"
-    - "Hioki E.E. Corporation"
+    - "Keysight"
+    - "Rohde Schwarz"
+    - "National Instruments"
+    - "Tektronix"
+    - "Klein Tools"
+    - "Amprobe"
+    - "test measurement industry"
+    - "multimeter market"
+    - "oscilloscope market"
 
 # Monitoring Settings
 settings:

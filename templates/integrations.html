@@ -13,53 +13,52 @@
     </div>
 
     <div class="row">
-        <!-- changedetection.io -->
+        <!-- NewsAPI -->
         <div class="col-md-6 mb-4">
             <div class="card h-100">
-                <div class="card-header bg-dark text-white">
+                <div class="card-header bg-danger text-white">
                     <h5 class="mb-0">
-                        <i class="bi bi-eye me-2"></i>changedetection.io
-                        <span id="cd-status-badge" class="badge bg-secondary float-end">Checking...</span>
+                        <i class="bi bi-newspaper me-2"></i>NewsAPI
+                        <span id="newsapi-status-badge" class="badge bg-secondary float-end">Checking...</span>
                     </h5>
                 </div>
                 <div class="card-body">
-                    <p class="text-muted">Self-hosted webpage change detection service. Monitors competitor pages for visual and content changes.</p>
+                    <p class="text-muted">Real-time news monitoring from 80,000+ sources worldwide. Fetches competitor mentions and industry news automatically.</p>
                     
-                    <div id="cd-not-configured" style="display: none;">
+                    <div id="newsapi-not-configured" style="display: none;">
                         <div class="alert alert-warning">
                             <i class="bi bi-exclamation-triangle me-1"></i>
-                            Not configured. Set <code>CHANGEDETECTION_URL</code> environment variable.
+                            Not configured. Set <code>NEWSAPI_KEY</code> environment variable.
                         </div>
-                        <pre class="bg-light p-2"><code>export CHANGEDETECTION_URL=http://localhost:5000
-export CHANGEDETECTION_API_KEY=your-api-key</code></pre>
+                        <p><small>Get a free API key from <a href="https://newsapi.org" target="_blank">newsapi.org</a></small></p>
                     </div>
                     
-                    <div id="cd-configured" style="display: none;">
+                    <div id="newsapi-configured" style="display: none;">
                         <div class="mb-3">
-                            <strong>Status:</strong> <span id="cd-connection-status"></span>
+                            <strong>Status:</strong> <span id="newsapi-connection-status" class="text-success">Connected</span>
                         </div>
                         <div class="mb-3">
-                            <strong>Watches:</strong> <span id="cd-watch-count">-</span>
+                            <strong>News Items:</strong> <span id="newsapi-item-count">-</span>
                         </div>
                         <div class="mb-3">
-                            <strong>URL:</strong> <code id="cd-url"></code>
+                            <strong>Sources:</strong> <span class="text-muted">80,000+ news sources</span>
                         </div>
                         
                         <hr>
                         
-                        <h6>Add URL to Watch</h6>
+                        <h6>Search Competitors</h6>
                         <div class="input-group mb-3">
-                            <input type="url" class="form-control" id="cd-new-url" placeholder="https://competitor.com/products">
-                            <button class="btn btn-primary" onclick="addChangeDetectionWatch()">
-                                <i class="bi bi-plus"></i> Add
+                            <input type="text" class="form-control" id="newsapi-query" placeholder="Search query (e.g., Hioki multimeter)">
+                            <button class="btn btn-primary" onclick="searchNewsAPI()">
+                                <i class="bi bi-search"></i> Search
                             </button>
                         </div>
                         
                         <div class="d-flex gap-2">
-                            <button class="btn btn-success" onclick="syncChangeDetection()">
-                                <i class="bi bi-arrow-repeat"></i> Sync All URLs
+                            <button class="btn btn-success" onclick="fetchAllCompetitorNews()">
+                                <i class="bi bi-arrow-repeat"></i> Fetch All Competitors
                             </button>
-                            <button class="btn btn-outline-secondary" onclick="checkChangeDetectionStatus()">
+                            <button class="btn btn-outline-secondary" onclick="checkNewsAPIStatus()">
                                 <i class="bi bi-arrow-clockwise"></i> Refresh
                             </button>
                         </div>
@@ -90,7 +89,7 @@ export CHANGEDETECTION_API_KEY=your-api-key</code></pre>
                     
                     <div class="alert alert-info">
                         <i class="bi bi-info-circle me-1"></i>
-                        To add Google Alerts, update the <code>keywords</code> section in <code>config/competitors.yaml</code>
+                        Keywords configured for: Hioki, Keysight, Rohde & Schwarz, National Instruments
                     </div>
                     
                     <button class="btn btn-success" onclick="syncGoogleAlerts()">
@@ -181,77 +180,70 @@ export CHANGEDETECTION_API_KEY=your-api-key</code></pre>
 
 {% block extra_js %}
 <script>
-// Check changedetection.io status
-async function checkChangeDetectionStatus() {
+// Check NewsAPI status
+async function checkNewsAPIStatus() {
     try {
-        const response = await fetch('/api/integrations/changedetection/status');
+        const response = await fetch('/api/integrations/newsapi/status');
         const data = await response.json();
         
         if (!data.configured) {
-            document.getElementById('cd-status-badge').className = 'badge bg-warning float-end';
-            document.getElementById('cd-status-badge').textContent = 'Not Configured';
-            document.getElementById('cd-not-configured').style.display = 'block';
-            document.getElementById('cd-configured').style.display = 'none';
-        } else if (data.connected) {
-            document.getElementById('cd-status-badge').className = 'badge bg-success float-end';
-            document.getElementById('cd-status-badge').textContent = 'Connected';
-            document.getElementById('cd-not-configured').style.display = 'none';
-            document.getElementById('cd-configured').style.display = 'block';
-            document.getElementById('cd-connection-status').innerHTML = '<span class="text-success">Connected</span>';
-            document.getElementById('cd-watch-count').textContent = data.watch_count;
-            document.getElementById('cd-url').textContent = data.url;
+            document.getElementById('newsapi-status-badge').className = 'badge bg-warning float-end';
+            document.getElementById('newsapi-status-badge').textContent = 'Not Configured';
+            document.getElementById('newsapi-not-configured').style.display = 'block';
+            document.getElementById('newsapi-configured').style.display = 'none';
         } else {
-            document.getElementById('cd-status-badge').className = 'badge bg-danger float-end';
-            document.getElementById('cd-status-badge').textContent = 'Error';
-            document.getElementById('cd-not-configured').style.display = 'none';
-            document.getElementById('cd-configured').style.display = 'block';
-            document.getElementById('cd-connection-status').innerHTML = `<span class="text-danger">Error: ${data.error}</span>`;
+            document.getElementById('newsapi-status-badge').className = 'badge bg-success float-end';
+            document.getElementById('newsapi-status-badge').textContent = 'Connected';
+            document.getElementById('newsapi-not-configured').style.display = 'none';
+            document.getElementById('newsapi-configured').style.display = 'block';
+            document.getElementById('newsapi-item-count').textContent = data.news_count || 0;
         }
     } catch (error) {
-        document.getElementById('cd-status-badge').className = 'badge bg-danger float-end';
-        document.getElementById('cd-status-badge').textContent = 'Error';
+        document.getElementById('newsapi-status-badge').className = 'badge bg-danger float-end';
+        document.getElementById('newsapi-status-badge').textContent = 'Error';
     }
 }
 
-async function addChangeDetectionWatch() {
-    const url = document.getElementById('cd-new-url').value;
-    if (!url) {
-        showToast('Error', 'Please enter a URL', 'warning');
+async function searchNewsAPI() {
+    const query = document.getElementById('newsapi-query').value;
+    if (!query) {
+        showToast('Error', 'Please enter a search query', 'warning');
         return;
     }
     
+    showToast('Searching', `Searching for "${query}"...`, 'info');
+    
     try {
-        const response = await fetch('/api/integrations/changedetection/add', {
+        const response = await fetch('/api/integrations/newsapi/search', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({url: url, tag: 'competitor-monitor'})
+            body: JSON.stringify({query: query})
         });
         const data = await response.json();
         
         if (data.success) {
-            showToast('Success', 'Watch added successfully', 'success');
-            document.getElementById('cd-new-url').value = '';
-            checkChangeDetectionStatus();
+            showToast('Success', `Found ${data.articles_fetched} articles, ${data.new_items} new`, 'success');
+            checkNewsAPIStatus();
         } else {
-            showToast('Error', data.error || 'Failed to add watch', 'danger');
+            showToast('Error', data.error || 'Search failed', 'danger');
         }
     } catch (error) {
         showToast('Error', error.message, 'danger');
     }
 }
 
-async function syncChangeDetection() {
-    showToast('Syncing', 'Syncing with changedetection.io...', 'info');
+async function fetchAllCompetitorNews() {
+    showToast('Fetching', 'Fetching news for all competitors...', 'info');
     
     try {
-        const response = await fetch('/api/integrations/changedetection/sync', {method: 'POST'});
+        const response = await fetch('/api/integrations/newsapi/fetch-all', {method: 'POST'});
         const data = await response.json();
         
         if (data.success) {
-            showToast('Success', `Synced ${data.synced.added || 0} URLs, imported ${data.imported_changes.length} changes`, 'success');
-            checkChangeDetectionStatus();
+            showToast('Success', `Fetched ${data.total_articles} articles, ${data.new_items} new items`, 'success');
+            checkNewsAPIStatus();
         } else {
-            showToast('Error', data.error || 'Sync failed', 'danger');
+            showToast('Error', data.error || 'Fetch failed', 'danger');
         }
     } catch (error) {
         showToast('Error', error.message, 'danger');
@@ -419,7 +411,7 @@ async function testTeamsWebhook() {
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
-    checkChangeDetectionStatus();
+    checkNewsAPIStatus();
     checkGoogleAlertsStatus();
     checkOtherIntegrations();
 });
