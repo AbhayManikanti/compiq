@@ -7,21 +7,12 @@
     <!-- Header -->
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-            <h2><i class="bi bi-lightbulb me-2"></i>Competitive Insights</h2>
-            <p class="text-muted mb-0">AI-powered analysis with team-specific recommendations</p>
+            <h2><i class="bi bi-lightbulb me-2"></i>Competitive Insights & Response Playbooks</h2>
+            <p class="text-muted mb-0">AI-powered analysis with team-specific action items</p>
         </div>
         <div class="d-flex gap-2">
-            <div class="btn-group">
-                <button class="btn btn-outline-success dropdown-toggle" data-bs-toggle="dropdown">
-                    <i class="bi bi-download"></i> Export
-                </button>
-                <ul class="dropdown-menu">
-                    <li><a class="dropdown-item" href="/api/export/insights/pdf"><i class="bi bi-file-pdf text-danger"></i> Export as PDF</a></li>
-                    <li><a class="dropdown-item" href="/api/export/insights/csv"><i class="bi bi-file-earmark-spreadsheet text-success"></i> Export as CSV</a></li>
-                </ul>
-            </div>
-            <button class="btn btn-primary" onclick="generateInsights()">
-                <i class="bi bi-magic me-1"></i> Generate Insights
+            <button class="btn btn-success" onclick="generateAllInsights()">
+                <i class="bi bi-magic me-1"></i> Generate All Missing Insights
             </button>
         </div>
     </div>
@@ -47,7 +38,7 @@
         <div class="col-md-3">
             <div class="card bg-danger text-white">
                 <div class="card-body">
-                    <h6 class="card-title">Urgent</h6>
+                    <h6 class="card-title">Urgent Actions</h6>
                     <h2 id="urgent-insights">-</h2>
                 </div>
             </div>
@@ -62,120 +53,283 @@
         </div>
     </div>
 
-    <!-- Team Filter Tabs -->
-    <ul class="nav nav-tabs mb-4" id="teamTabs" role="tablist">
+    <!-- View Tabs -->
+    <ul class="nav nav-tabs mb-4" id="viewTabs" role="tablist">
         <li class="nav-item" role="presentation">
-            <button class="nav-link active" id="all-tab" data-bs-toggle="tab" data-team="" type="button">
-                <i class="bi bi-grid me-1"></i> All Teams
+            <button class="nav-link active" id="action-board-tab" data-bs-toggle="tab" data-bs-target="#action-board" type="button">
+                <i class="bi bi-kanban me-1"></i> Team Action Board
             </button>
         </li>
         <li class="nav-item" role="presentation">
-            <button class="nav-link" id="sales-tab" data-bs-toggle="tab" data-team="sales" type="button">
-                <i class="bi bi-graph-up me-1"></i> Sales
-            </button>
-        </li>
-        <li class="nav-item" role="presentation">
-            <button class="nav-link" id="marketing-tab" data-bs-toggle="tab" data-team="marketing" type="button">
-                <i class="bi bi-megaphone me-1"></i> Marketing
-            </button>
-        </li>
-        <li class="nav-item" role="presentation">
-            <button class="nav-link" id="product-tab" data-bs-toggle="tab" data-team="product" type="button">
-                <i class="bi bi-box me-1"></i> Product
-            </button>
-        </li>
-        <li class="nav-item" role="presentation">
-            <button class="nav-link" id="engineering-tab" data-bs-toggle="tab" data-team="engineering" type="button">
-                <i class="bi bi-cpu me-1"></i> Engineering
-            </button>
-        </li>
-        <li class="nav-item" role="presentation">
-            <button class="nav-link" id="executive-tab" data-bs-toggle="tab" data-team="executive" type="button">
-                <i class="bi bi-briefcase me-1"></i> Executive
+            <button class="nav-link" id="timeline-tab" data-bs-toggle="tab" data-bs-target="#timeline" type="button">
+                <i class="bi bi-list-ul me-1"></i> Timeline View
             </button>
         </li>
     </ul>
 
-    <!-- Insights List -->
-    <div id="insights-list">
-        <div class="text-center py-5">
-            <div class="spinner-border text-primary" role="status">
-                <span class="visually-hidden">Loading...</span>
+    <div class="tab-content">
+        <!-- Team Action Board View -->
+        <div class="tab-pane fade show active" id="action-board" role="tabpanel">
+            <div class="row" id="team-boards">
+                <!-- Sales Team -->
+                <div class="col-md-4 col-lg-2-4 mb-4">
+                    <div class="card h-100 border-primary">
+                        <div class="card-header bg-primary text-white">
+                            <i class="bi bi-graph-up me-1"></i> Sales
+                            <span class="badge bg-light text-primary float-end" id="sales-count">0</span>
+                        </div>
+                        <div class="card-body p-2" id="sales-actions" style="max-height: 600px; overflow-y: auto;">
+                            <div class="text-center text-muted py-3">Loading...</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Marketing Team -->
+                <div class="col-md-4 col-lg-2-4 mb-4">
+                    <div class="card h-100 border-success">
+                        <div class="card-header bg-success text-white">
+                            <i class="bi bi-megaphone me-1"></i> Marketing
+                            <span class="badge bg-light text-success float-end" id="marketing-count">0</span>
+                        </div>
+                        <div class="card-body p-2" id="marketing-actions" style="max-height: 600px; overflow-y: auto;">
+                            <div class="text-center text-muted py-3">Loading...</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Product Team -->
+                <div class="col-md-4 col-lg-2-4 mb-4">
+                    <div class="card h-100 border-info">
+                        <div class="card-header bg-info text-white">
+                            <i class="bi bi-box me-1"></i> Product
+                            <span class="badge bg-light text-info float-end" id="product-count">0</span>
+                        </div>
+                        <div class="card-body p-2" id="product-actions" style="max-height: 600px; overflow-y: auto;">
+                            <div class="text-center text-muted py-3">Loading...</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Engineering Team -->
+                <div class="col-md-4 col-lg-2-4 mb-4">
+                    <div class="card h-100 border-warning">
+                        <div class="card-header bg-warning text-dark">
+                            <i class="bi bi-cpu me-1"></i> Engineering
+                            <span class="badge bg-dark text-warning float-end" id="engineering-count">0</span>
+                        </div>
+                        <div class="card-body p-2" id="engineering-actions" style="max-height: 600px; overflow-y: auto;">
+                            <div class="text-center text-muted py-3">Loading...</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Executive Team -->
+                <div class="col-md-4 col-lg-2-4 mb-4">
+                    <div class="card h-100 border-dark">
+                        <div class="card-header bg-dark text-white">
+                            <i class="bi bi-briefcase me-1"></i> Executive
+                            <span class="badge bg-light text-dark float-end" id="executive-count">0</span>
+                        </div>
+                        <div class="card-body p-2" id="executive-actions" style="max-height: 600px; overflow-y: auto;">
+                            <div class="text-center text-muted py-3">Loading...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Timeline View -->
+        <div class="tab-pane fade" id="timeline" role="tabpanel">
+            <div id="insights-list">
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Generate Insights Modal -->
-<div class="modal fade" id="generateModal" tabindex="-1">
-    <div class="modal-dialog">
+<!-- Insight Detail Modal -->
+<div class="modal fade" id="insightModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Generate Insights</h5>
+                <h5 class="modal-title" id="insightModalTitle">Insight Details</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body">
-                <p>This will analyze unprocessed alerts and news to generate team-specific insights and product comparisons.</p>
-                <div class="mb-3">
-                    <label class="form-label">Number of items to process</label>
-                    <input type="number" class="form-control" id="generateLimit" value="10" min="1" max="50">
-                </div>
+            <div class="modal-body" id="insightModalBody">
+                <!-- Content loaded dynamically -->
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary" onclick="runGenerateInsights()">
-                    <i class="bi bi-magic me-1"></i> Generate
-                </button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <a href="#" class="btn btn-primary" id="insightDetailLink">
+                    <i class="bi bi-eye me-1"></i> View Full Details
+                </a>
             </div>
         </div>
     </div>
 </div>
+
+<style>
+.col-lg-2-4 {
+    flex: 0 0 20%;
+    max-width: 20%;
+}
+@media (max-width: 991px) {
+    .col-lg-2-4 {
+        flex: 0 0 33.333%;
+        max-width: 33.333%;
+    }
+}
+@media (max-width: 767px) {
+    .col-lg-2-4 {
+        flex: 0 0 100%;
+        max-width: 100%;
+    }
+}
+.action-card {
+    transition: transform 0.2s, box-shadow 0.2s;
+    cursor: pointer;
+}
+.action-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+.urgency-high { border-left: 4px solid #dc3545 !important; }
+.urgency-medium { border-left: 4px solid #ffc107 !important; }
+.urgency-low { border-left: 4px solid #17a2b8 !important; }
+</style>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-let currentTeam = '';
+let allInsights = [];
 
 document.addEventListener('DOMContentLoaded', function() {
     loadSummary();
     loadInsights();
-    
-    // Tab click handlers
-    document.querySelectorAll('#teamTabs button').forEach(btn => {
-        btn.addEventListener('click', function() {
-            document.querySelectorAll('#teamTabs button').forEach(b => b.classList.remove('active'));
-            this.classList.add('active');
-            currentTeam = this.dataset.team;
-            loadInsights();
-        });
-    });
 });
 
 function loadSummary() {
     fetch('/api/insights/summary')
         .then(r => r.json())
         .then(data => {
-            document.getElementById('total-insights').textContent = data.total;
-            document.getElementById('unreviewed-insights').textContent = data.unreviewed;
-            document.getElementById('urgent-insights').textContent = data.urgent;
-            document.getElementById('high-impact-insights').textContent = data.high_impact_recent.length;
+            document.getElementById('total-insights').textContent = data.total || 0;
+            document.getElementById('unreviewed-insights').textContent = data.unreviewed || 0;
+            document.getElementById('urgent-insights').textContent = data.urgent || 0;
+            document.getElementById('high-impact-insights').textContent = (data.high_impact_recent || []).length;
+        })
+        .catch(() => {
+            document.getElementById('total-insights').textContent = '0';
         });
 }
 
 function loadInsights() {
-    let url = '/api/insights';
-    if (currentTeam) {
-        url += `?team=${currentTeam}`;
-    }
-    
-    fetch(url)
+    fetch('/api/insights')
         .then(r => r.json())
         .then(data => {
-            renderInsights(data.insights);
+            allInsights = data.insights || [];
+            renderTeamBoards(allInsights);
+            renderTimeline(allInsights);
+        })
+        .catch(err => {
+            console.error('Error loading insights:', err);
+            showEmptyState();
         });
 }
 
-function renderInsights(insights) {
+function renderTeamBoards(insights) {
+    const teams = ['sales', 'marketing', 'product', 'engineering', 'executive'];
+    
+    teams.forEach(team => {
+        const container = document.getElementById(`${team}-actions`);
+        const countBadge = document.getElementById(`${team}-count`);
+        
+        // Filter insights that have actions for this team
+        const teamInsights = insights.filter(i => {
+            const teamData = i[`${team}_insights`];
+            return teamData && (teamData.summary || teamData.talking_points || teamData.urgency);
+        });
+        
+        countBadge.textContent = teamInsights.length;
+        
+        if (teamInsights.length === 0) {
+            container.innerHTML = `
+                <div class="text-center text-muted py-3">
+                    <i class="bi bi-inbox display-6"></i>
+                    <p class="small mt-2">No actions</p>
+                </div>
+            `;
+            return;
+        }
+        
+        // Sort by urgency
+        teamInsights.sort((a, b) => {
+            const urgencyOrder = { 'high': 0, 'medium': 1, 'low': 2 };
+            const aUrgency = a[`${team}_insights`]?.urgency || 'low';
+            const bUrgency = b[`${team}_insights`]?.urgency || 'low';
+            return (urgencyOrder[aUrgency] || 2) - (urgencyOrder[bUrgency] || 2);
+        });
+        
+        let html = '';
+        teamInsights.forEach(insight => {
+            const teamData = insight[`${team}_insights`];
+            const urgency = teamData.urgency || 'low';
+            
+            html += `
+            <div class="card mb-2 action-card urgency-${urgency}" onclick="showInsightDetail(${insight.id})">
+                <div class="card-body p-2">
+                    <div class="d-flex justify-content-between align-items-start mb-1">
+                        <small class="text-muted">${insight.competitor_name || 'Unknown'}</small>
+                        <span class="badge bg-${urgency === 'high' ? 'danger' : urgency === 'medium' ? 'warning' : 'info'} badge-sm">${urgency}</span>
+                    </div>
+                    <p class="mb-1 small fw-bold">${escapeHtml((insight.title || '').substring(0, 60))}${(insight.title || '').length > 60 ? '...' : ''}</p>
+                    <p class="mb-0 small text-muted">${escapeHtml((teamData.summary || '').substring(0, 80))}${(teamData.summary || '').length > 80 ? '...' : ''}</p>
+                    ${renderQuickActions(teamData, team)}
+                </div>
+            </div>
+            `;
+        });
+        
+        container.innerHTML = html;
+    });
+}
+
+function renderQuickActions(teamData, team) {
+    let actions = [];
+    
+    if (team === 'sales') {
+        if (teamData.talking_points && teamData.talking_points.length > 0) {
+            actions.push(`<span class="badge bg-light text-dark me-1"><i class="bi bi-chat-quote"></i> ${teamData.talking_points.length} talking pts</span>`);
+        }
+        if (teamData.objection_handlers && teamData.objection_handlers.length > 0) {
+            actions.push(`<span class="badge bg-light text-dark"><i class="bi bi-shield"></i> ${teamData.objection_handlers.length} objections</span>`);
+        }
+    } else if (team === 'marketing') {
+        if (teamData.content_ideas && teamData.content_ideas.length > 0) {
+            actions.push(`<span class="badge bg-light text-dark me-1"><i class="bi bi-file-text"></i> ${teamData.content_ideas.length} content ideas</span>`);
+        }
+    } else if (team === 'product') {
+        if (teamData.feature_gaps && teamData.feature_gaps.length > 0) {
+            actions.push(`<span class="badge bg-light text-dark"><i class="bi bi-puzzle"></i> ${teamData.feature_gaps.length} feature gaps</span>`);
+        }
+    } else if (team === 'engineering') {
+        if (teamData.r_and_d_priorities && teamData.r_and_d_priorities.length > 0) {
+            actions.push(`<span class="badge bg-light text-dark"><i class="bi bi-gear"></i> ${teamData.r_and_d_priorities.length} R&D items</span>`);
+        }
+    } else if (team === 'executive') {
+        if (teamData.investment_recommendations && teamData.investment_recommendations.length > 0) {
+            actions.push(`<span class="badge bg-light text-dark"><i class="bi bi-cash"></i> ${teamData.investment_recommendations.length} investments</span>`);
+        }
+    }
+    
+    if (actions.length === 0) return '';
+    return `<div class="mt-1">${actions.join('')}</div>`;
+}
+
+function renderTimeline(insights) {
     const container = document.getElementById('insights-list');
     
     if (!insights || insights.length === 0) {
@@ -183,178 +337,255 @@ function renderInsights(insights) {
             <div class="text-center py-5">
                 <i class="bi bi-lightbulb display-1 text-muted"></i>
                 <h4 class="mt-3">No Insights Yet</h4>
-                <p class="text-muted">Click "Generate Insights" to analyze competitor news and create team recommendations.</p>
+                <p class="text-muted">Click "Generate All Missing Insights" to analyze alerts and create team playbooks.</p>
             </div>
         `;
         return;
     }
     
-    let html = '<div class="row">';
+    let html = '';
     
     insights.forEach(insight => {
         const urgencyClass = insight.urgency_score >= 70 ? 'danger' : (insight.urgency_score >= 40 ? 'warning' : 'info');
         const impactClass = insight.impact_score >= 70 ? 'danger' : (insight.impact_score >= 40 ? 'warning' : 'info');
         
         html += `
-        <div class="col-12 mb-4">
-            <div class="card shadow-sm">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <div>
-                        <h5 class="mb-0">${escapeHtml(insight.title)}</h5>
-                        <small class="text-muted">
-                            ${insight.competitor_name || 'Unknown'} • 
-                            ${new Date(insight.created_at).toLocaleDateString()}
-                        </small>
-                    </div>
-                    <div>
-                        <span class="badge bg-${urgencyClass} me-1">Urgency: ${insight.urgency_score}</span>
-                        <span class="badge bg-${impactClass}">Impact: ${insight.impact_score}</span>
-                        ${insight.is_reviewed ? '<span class="badge bg-success ms-1"><i class="bi bi-check"></i> Reviewed</span>' : ''}
-                    </div>
+        <div class="card mb-4 shadow-sm">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <div>
+                    <h5 class="mb-0">${escapeHtml(insight.title)}</h5>
+                    <small class="text-muted">
+                        ${insight.competitor_name || 'Unknown'} • 
+                        ${new Date(insight.created_at).toLocaleDateString()}
+                    </small>
                 </div>
-                <div class="card-body">
-                    <p class="lead">${escapeHtml(insight.executive_summary || '')}</p>
-                    
-                    ${insight.competitor_product && insight.fluke_product ? `
-                    <div class="alert alert-info">
-                        <strong><i class="bi bi-arrow-left-right me-1"></i> Product Comparison:</strong>
-                        ${escapeHtml(insight.competitor_product)} vs Fluke ${escapeHtml(insight.fluke_product)}
-                        <br><small>${escapeHtml(insight.comparison_summary || '')}</small>
-                    </div>
-                    ` : ''}
-                    
-                    ${currentTeam && insight.team_insights ? renderTeamInsights(currentTeam, insight.team_insights) : renderAllTeamsSummary(insight)}
-                    
-                    <div class="mt-3">
-                        <a href="/insights/${insight.id}" class="btn btn-primary">
-                            <i class="bi bi-eye me-1"></i> View Full Analysis
-                        </a>
-                    </div>
+                <div>
+                    <span class="badge bg-${urgencyClass} me-1">Urgency: ${insight.urgency_score}</span>
+                    <span class="badge bg-${impactClass}">Impact: ${insight.impact_score}</span>
+                    ${insight.is_reviewed ? '<span class="badge bg-success ms-1"><i class="bi bi-check"></i> Reviewed</span>' : ''}
+                </div>
+            </div>
+            <div class="card-body">
+                <p class="lead">${escapeHtml(insight.executive_summary || '')}</p>
+                
+                ${insight.competitor_product && insight.fluke_product ? `
+                <div class="alert alert-info">
+                    <strong><i class="bi bi-arrow-left-right me-1"></i> Product Comparison:</strong>
+                    ${escapeHtml(insight.competitor_product)} vs Fluke ${escapeHtml(insight.fluke_product)}
+                    <br><small>${escapeHtml(insight.comparison_summary || '')}</small>
+                </div>
+                ` : ''}
+                
+                <!-- Team Actions Summary -->
+                <div class="row mt-3">
+                    ${renderTeamActionSummary(insight, 'sales', 'Sales', 'graph-up', 'primary')}
+                    ${renderTeamActionSummary(insight, 'marketing', 'Marketing', 'megaphone', 'success')}
+                    ${renderTeamActionSummary(insight, 'product', 'Product', 'box', 'info')}
+                    ${renderTeamActionSummary(insight, 'engineering', 'Engineering', 'cpu', 'warning')}
+                    ${renderTeamActionSummary(insight, 'executive', 'Executive', 'briefcase', 'dark')}
+                </div>
+                
+                <!-- Immediate Actions -->
+                ${insight.immediate_actions && insight.immediate_actions.length > 0 ? `
+                <div class="mt-3">
+                    <h6><i class="bi bi-lightning-charge text-danger"></i> Immediate Actions (24-48 hrs)</h6>
+                    <ul class="mb-0">
+                        ${insight.immediate_actions.map(a => `<li>${escapeHtml(a)}</li>`).join('')}
+                    </ul>
+                </div>
+                ` : ''}
+                
+                <div class="mt-3">
+                    <button class="btn btn-primary btn-sm" onclick="showInsightDetail(${insight.id})">
+                        <i class="bi bi-eye me-1"></i> View Full Playbook
+                    </button>
+                    <a href="/insights/${insight.id}" class="btn btn-outline-secondary btn-sm">
+                        <i class="bi bi-box-arrow-up-right me-1"></i> Open Detail Page
+                    </a>
                 </div>
             </div>
         </div>
         `;
     });
     
-    html += '</div>';
     container.innerHTML = html;
 }
 
-function renderTeamInsights(team, teamData) {
-    if (!teamData || !teamData.summary) return '';
+function renderTeamActionSummary(insight, team, teamName, icon, color) {
+    const data = insight[`${team}_insights`];
+    if (!data || !data.summary) return '';
     
-    const teamNames = {
-        'sales': 'Sales Team',
-        'marketing': 'Marketing Team', 
-        'product': 'Product Team',
-        'engineering': 'Engineering Team',
-        'executive': 'Executive Team'
-    };
-    
-    const urgencyColors = {
-        'high': 'danger',
-        'medium': 'warning',
-        'low': 'info'
-    };
+    const urgencyColors = { 'high': 'danger', 'medium': 'warning', 'low': 'info' };
     
     return `
-    <div class="card bg-light mt-3">
-        <div class="card-header">
-            <strong><i class="bi bi-people me-1"></i> ${teamNames[team] || team}</strong>
-            ${teamData.urgency ? `<span class="badge bg-${urgencyColors[teamData.urgency] || 'secondary'} float-end">${teamData.urgency} urgency</span>` : ''}
-        </div>
-        <div class="card-body">
-            <p>${escapeHtml(teamData.summary || '')}</p>
-            
-            ${teamData.talking_points ? `
-            <strong>Talking Points:</strong>
-            <ul>${teamData.talking_points.map(p => `<li>${escapeHtml(p)}</li>`).join('')}</ul>
-            ` : ''}
-            
-            ${teamData.messaging_recommendations ? `
-            <strong>Messaging Recommendations:</strong>
-            <ul>${teamData.messaging_recommendations.map(p => `<li>${escapeHtml(p)}</li>`).join('')}</ul>
-            ` : ''}
-            
-            ${teamData.feature_gaps ? `
-            <strong>Feature Gaps:</strong>
-            <ul>${teamData.feature_gaps.map(p => `<li>${escapeHtml(p)}</li>`).join('')}</ul>
-            ` : ''}
-            
-            ${teamData.strategic_implications ? `
-            <strong>Strategic Implications:</strong>
-            <p>${escapeHtml(teamData.strategic_implications)}</p>
-            ` : ''}
+    <div class="col-md-4 col-lg mb-2">
+        <div class="card h-100 border-${color}">
+            <div class="card-body p-2">
+                <h6 class="mb-1"><i class="bi bi-${icon} text-${color} me-1"></i> ${teamName}</h6>
+                <small class="text-muted">${escapeHtml((data.summary || '').substring(0, 80))}...</small>
+                ${data.urgency ? `<div class="mt-1"><span class="badge bg-${urgencyColors[data.urgency] || 'secondary'}">${data.urgency} priority</span></div>` : ''}
+            </div>
         </div>
     </div>
     `;
 }
 
-function renderAllTeamsSummary(insight) {
-    const teams = [
-        { key: 'sales_insights', name: 'Sales', icon: 'graph-up' },
-        { key: 'marketing_insights', name: 'Marketing', icon: 'megaphone' },
-        { key: 'product_insights', name: 'Product', icon: 'box' },
-        { key: 'engineering_insights', name: 'Engineering', icon: 'cpu' },
-        { key: 'executive_insights', name: 'Executive', icon: 'briefcase' }
-    ];
+function showInsightDetail(id) {
+    const insight = allInsights.find(i => i.id === id);
+    if (!insight) return;
     
-    let html = '<div class="row mt-3">';
+    document.getElementById('insightModalTitle').textContent = insight.title;
+    document.getElementById('insightDetailLink').href = `/insights/${id}`;
     
-    teams.forEach(team => {
-        const data = insight[team.key];
-        if (data && data.summary) {
-            const urgencyColors = { 'high': 'danger', 'medium': 'warning', 'low': 'info' };
-            html += `
-            <div class="col-md-4 mb-2">
-                <div class="card h-100">
-                    <div class="card-body p-3">
-                        <h6><i class="bi bi-${team.icon} me-1"></i> ${team.name}</h6>
-                        <small class="text-muted">${escapeHtml(data.summary.substring(0, 100))}...</small>
-                        ${data.urgency ? `<span class="badge bg-${urgencyColors[data.urgency] || 'secondary'} mt-2">${data.urgency}</span>` : ''}
-                    </div>
-                </div>
+    let html = `
+        <div class="alert alert-secondary">
+            <strong>Executive Summary:</strong> ${escapeHtml(insight.executive_summary || 'No summary available')}
+        </div>
+        
+        ${insight.competitor_product ? `
+        <div class="mb-3">
+            <strong>Product Comparison:</strong> ${escapeHtml(insight.competitor_product)} vs Fluke ${escapeHtml(insight.fluke_product || 'N/A')}
+            <p class="text-muted mb-0">${escapeHtml(insight.comparison_summary || '')}</p>
+        </div>
+        ` : ''}
+        
+        <ul class="nav nav-pills mb-3" id="teamDetailTabs" role="tablist">
+            <li class="nav-item"><button class="nav-link active" data-bs-toggle="pill" data-bs-target="#detail-sales">Sales</button></li>
+            <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#detail-marketing">Marketing</button></li>
+            <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#detail-product">Product</button></li>
+            <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#detail-engineering">Engineering</button></li>
+            <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#detail-executive">Executive</button></li>
+        </ul>
+        
+        <div class="tab-content">
+            ${renderTeamDetailTab(insight.sales_insights, 'sales', 'Sales')}
+            ${renderTeamDetailTab(insight.marketing_insights, 'marketing', 'Marketing')}
+            ${renderTeamDetailTab(insight.product_insights, 'product', 'Product')}
+            ${renderTeamDetailTab(insight.engineering_insights, 'engineering', 'Engineering')}
+            ${renderTeamDetailTab(insight.executive_insights, 'executive', 'Executive')}
+        </div>
+        
+        <hr>
+        <h6><i class="bi bi-list-check"></i> Action Items</h6>
+        <div class="row">
+            <div class="col-md-4">
+                <strong class="text-danger">Immediate (24-48 hrs)</strong>
+                <ul>${(insight.immediate_actions || []).map(a => `<li>${escapeHtml(a)}</li>`).join('') || '<li class="text-muted">None</li>'}</ul>
             </div>
-            `;
-        }
-    });
+            <div class="col-md-4">
+                <strong class="text-warning">Short-term (1-4 weeks)</strong>
+                <ul>${(insight.short_term_actions || []).map(a => `<li>${escapeHtml(a)}</li>`).join('') || '<li class="text-muted">None</li>'}</ul>
+            </div>
+            <div class="col-md-4">
+                <strong class="text-info">Long-term (Quarter)</strong>
+                <ul>${(insight.long_term_actions || []).map(a => `<li>${escapeHtml(a)}</li>`).join('') || '<li class="text-muted">None</li>'}</ul>
+            </div>
+        </div>
+    `;
     
-    html += '</div>';
-    return html;
+    document.getElementById('insightModalBody').innerHTML = html;
+    new bootstrap.Modal(document.getElementById('insightModal')).show();
 }
 
-function generateInsights() {
-    new bootstrap.Modal(document.getElementById('generateModal')).show();
+function renderTeamDetailTab(data, key, name) {
+    const isActive = key === 'sales' ? 'show active' : '';
+    
+    if (!data || !data.summary) {
+        return `<div class="tab-pane fade ${isActive}" id="detail-${key}"><p class="text-muted">No specific insights for ${name} team.</p></div>`;
+    }
+    
+    let content = `<p><strong>Summary:</strong> ${escapeHtml(data.summary)}</p>`;
+    
+    // Sales specific
+    if (data.talking_points && data.talking_points.length > 0) {
+        content += `<p><strong>Talking Points:</strong></p><ul>${data.talking_points.map(t => `<li>${escapeHtml(t)}</li>`).join('')}</ul>`;
+    }
+    if (data.objection_handlers && data.objection_handlers.length > 0) {
+        content += `<p><strong>Objection Handlers:</strong></p><ul>${data.objection_handlers.map(t => `<li>${escapeHtml(t)}</li>`).join('')}</ul>`;
+    }
+    if (data.competitive_positioning) {
+        content += `<p><strong>Competitive Positioning:</strong> ${escapeHtml(data.competitive_positioning)}</p>`;
+    }
+    
+    // Marketing specific
+    if (data.messaging_recommendations && data.messaging_recommendations.length > 0) {
+        content += `<p><strong>Messaging Recommendations:</strong></p><ul>${data.messaging_recommendations.map(t => `<li>${escapeHtml(t)}</li>`).join('')}</ul>`;
+    }
+    if (data.content_ideas && data.content_ideas.length > 0) {
+        content += `<p><strong>Content Ideas:</strong></p><ul>${data.content_ideas.map(t => `<li>${escapeHtml(t)}</li>`).join('')}</ul>`;
+    }
+    
+    // Product specific
+    if (data.feature_gaps && data.feature_gaps.length > 0) {
+        content += `<p><strong>Feature Gaps:</strong></p><ul>${data.feature_gaps.map(t => `<li>${escapeHtml(t)}</li>`).join('')}</ul>`;
+    }
+    if (data.roadmap_implications) {
+        content += `<p><strong>Roadmap Implications:</strong> ${escapeHtml(data.roadmap_implications)}</p>`;
+    }
+    
+    // Engineering specific
+    if (data.technical_analysis) {
+        content += `<p><strong>Technical Analysis:</strong> ${escapeHtml(data.technical_analysis)}</p>`;
+    }
+    if (data.r_and_d_priorities && data.r_and_d_priorities.length > 0) {
+        content += `<p><strong>R&D Priorities:</strong></p><ul>${data.r_and_d_priorities.map(t => `<li>${escapeHtml(t)}</li>`).join('')}</ul>`;
+    }
+    
+    // Executive specific
+    if (data.strategic_implications) {
+        content += `<p><strong>Strategic Implications:</strong> ${escapeHtml(data.strategic_implications)}</p>`;
+    }
+    if (data.investment_recommendations && data.investment_recommendations.length > 0) {
+        content += `<p><strong>Investment Recommendations:</strong></p><ul>${data.investment_recommendations.map(t => `<li>${escapeHtml(t)}</li>`).join('')}</ul>`;
+    }
+    if (data.competitive_response_options && data.competitive_response_options.length > 0) {
+        content += `<p><strong>Response Options:</strong></p><ul>${data.competitive_response_options.map(t => `<li>${escapeHtml(t)}</li>`).join('')}</ul>`;
+    }
+    
+    return `<div class="tab-pane fade ${isActive}" id="detail-${key}">${content}</div>`;
 }
 
-function runGenerateInsights() {
-    const limit = document.getElementById('generateLimit').value;
+async function generateAllInsights() {
+    if (!confirm('This will generate insights for all alerts that don\'t have them yet. This may take a few minutes. Continue?')) {
+        return;
+    }
+    
     const btn = event.target;
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Generating...';
     
-    fetch('/api/insights/generate-batch', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ limit: parseInt(limit) })
-    })
-    .then(r => r.json())
-    .then(data => {
-        bootstrap.Modal.getInstance(document.getElementById('generateModal')).hide();
+    try {
+        const response = await fetch('/api/insights/generate-batch', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ limit: 50 })
+        });
+        const data = await response.json();
+        
         if (data.success) {
-            alert(`Generated ${data.count} insights!`);
+            showToast('Success', `Generated ${data.count} new insights!`, 'success');
             loadSummary();
             loadInsights();
         } else {
-            alert('Error: ' + (data.error || 'Unknown error'));
+            showToast('Error', data.error || 'Failed to generate insights', 'danger');
         }
-    })
-    .catch(err => {
-        alert('Error generating insights: ' + err);
-    })
-    .finally(() => {
+    } catch (err) {
+        showToast('Error', 'Failed to generate insights: ' + err.message, 'danger');
+    } finally {
         btn.disabled = false;
-        btn.innerHTML = '<i class="bi bi-magic me-1"></i> Generate';
+        btn.innerHTML = '<i class="bi bi-magic me-1"></i> Generate All Missing Insights';
+    }
+}
+
+function showEmptyState() {
+    ['sales', 'marketing', 'product', 'engineering', 'executive'].forEach(team => {
+        document.getElementById(`${team}-actions`).innerHTML = `
+            <div class="text-center text-muted py-3">
+                <i class="bi bi-inbox display-6"></i>
+                <p class="small mt-2">No actions</p>
+            </div>
+        `;
+        document.getElementById(`${team}-count`).textContent = '0';
     });
 }
 

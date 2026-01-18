@@ -247,6 +247,22 @@ electronic test tools, biomedical equipment, and networking solutions.
             logger.error(f"Error sending alert {alert.id} to Teams: {e}")
             return False
     
+    def _generate_insight(self, alert: Alert) -> bool:
+        """Auto-generate insight for significant alerts."""
+        try:
+            from .insights import InsightsGenerator
+            
+            generator = InsightsGenerator()
+            insight = generator.generate_from_alert(alert)
+            
+            if insight:
+                logger.info(f"Auto-generated insight {insight.id} for alert {alert.id}")
+                return True
+            return False
+        except Exception as e:
+            logger.error(f"Error auto-generating insight for alert {alert.id}: {e}")
+            return False
+    
     def _build_analysis_prompt(
         self, 
         content: str, 
@@ -455,6 +471,10 @@ Change Detected: {snapshot.captured_at}
         # Auto-send to Teams if configured
         self._notify_teams(alert)
         
+        # Auto-generate insight for significant alerts
+        if result.risk_level in ['critical', 'high']:
+            self._generate_insight(alert)
+        
         logger.info(f"Created alert {alert.id} for page change on {monitored_url.url}")
         return alert
     
@@ -519,6 +539,10 @@ URL: {news_item.url}
         
         # Auto-send to Teams if configured
         self._notify_teams(alert)
+        
+        # Auto-generate insight for significant alerts
+        if result.risk_level in ['critical', 'high']:
+            self._generate_insight(alert)
         
         logger.info(f"Created alert {alert.id} for news item: {news_item.title[:50]}")
         return alert
