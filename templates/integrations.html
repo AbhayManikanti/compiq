@@ -127,17 +127,37 @@ export CHANGEDETECTION_API_KEY=your-api-key</code></pre>
                     <div id="teams-status">
                         <!-- Status populated by JS -->
                     </div>
+                    <div id="teams-stats" class="mb-3" style="display: none;">
+                        <div class="row text-center">
+                            <div class="col-6">
+                                <h4 class="mb-0 text-success" id="teams-sent-count">0</h4>
+                                <small class="text-muted">Sent to Teams</small>
+                            </div>
+                            <div class="col-6">
+                                <h4 class="mb-0 text-warning" id="teams-pending-count">0</h4>
+                                <small class="text-muted">Pending</small>
+                            </div>
+                        </div>
+                    </div>
                     <div class="mb-3">
                         <label class="form-label">Webhook URL</label>
                         <input type="url" class="form-control" id="teams-webhook" placeholder="https://outlook.office.com/webhook/...">
-                        <small class="text-muted">Enter your Teams incoming webhook URL</small>
+                        <small class="text-muted">Enter your Teams incoming webhook or Power Automate URL</small>
                     </div>
-                    <button class="btn btn-primary btn-sm" onclick="saveTeamsWebhook()">
-                        <i class="bi bi-save"></i> Save Webhook
-                    </button>
-                    <button class="btn btn-outline-secondary btn-sm" onclick="testTeamsWebhook()">
-                        <i class="bi bi-send"></i> Test
-                    </button>
+                    <div class="d-flex flex-wrap gap-2">
+                        <button class="btn btn-primary btn-sm" onclick="saveTeamsWebhook()">
+                            <i class="bi bi-save"></i> Save Webhook
+                        </button>
+                        <button class="btn btn-outline-secondary btn-sm" onclick="testTeamsWebhook()">
+                            <i class="bi bi-send"></i> Test
+                        </button>
+                        <button class="btn btn-success btn-sm" id="teams-sync-btn" onclick="syncAllAlertsToTeams()" style="display: none;">
+                            <i class="bi bi-arrow-repeat"></i> Sync All Alerts
+                        </button>
+                    </div>
+                    <div class="mt-2">
+                        <small class="text-muted"><i class="bi bi-info-circle"></i> New alerts are automatically sent to Teams when webhook is configured.</small>
+                    </div>
                 </div>
             </div>
         </div>
@@ -307,11 +327,52 @@ async function checkTeamsStatus() {
         if (data.configured) {
             teamsEl.innerHTML = '<div class="alert alert-success mb-2"><i class="bi bi-check-circle me-1"></i> Webhook Configured</div>';
             document.getElementById('teams-webhook').value = data.webhook_url || '';
+            // Show sync button and load stats
+            document.getElementById('teams-sync-btn').style.display = 'inline-block';
+            document.getElementById('teams-stats').style.display = 'block';
+            loadTeamsStats();
         } else {
             teamsEl.innerHTML = '<div class="alert alert-warning mb-2"><i class="bi bi-exclamation-triangle me-1"></i> Not configured</div>';
+            document.getElementById('teams-sync-btn').style.display = 'none';
+            document.getElementById('teams-stats').style.display = 'none';
         }
     } catch (error) {
         document.getElementById('teams-status').innerHTML = '<div class="alert alert-secondary mb-2">Unable to check status</div>';
+    }
+}
+
+async function loadTeamsStats() {
+    try {
+        const response = await fetch('/api/integrations/teams/stats');
+        const data = await response.json();
+        
+        document.getElementById('teams-sent-count').textContent = data.sent_to_teams || 0;
+        document.getElementById('teams-pending-count').textContent = data.not_sent || 0;
+    } catch (error) {
+        console.error('Failed to load Teams stats:', error);
+    }
+}
+
+async function syncAllAlertsToTeams() {
+    const btn = document.getElementById('teams-sync-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Syncing...';
+    
+    try {
+        const response = await fetch('/api/integrations/teams/sync-all', {method: 'POST'});
+        const data = await response.json();
+        
+        if (data.success) {
+            showToast('Success', data.message, 'success');
+            loadTeamsStats();
+        } else {
+            showToast('Error', data.error || 'Sync failed', 'danger');
+        }
+    } catch (error) {
+        showToast('Error', error.message, 'danger');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-arrow-repeat"></i> Sync All Alerts';
     }
 }
 

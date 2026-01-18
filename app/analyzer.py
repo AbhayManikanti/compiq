@@ -169,6 +169,90 @@ electronic test tools, biomedical equipment, and networking solutions.
             }
         }
     
+    def _notify_teams(self, alert: Alert) -> bool:
+        """Send alert notification to Teams if configured."""
+        import requests
+        
+        webhook_url = os.environ.get('TEAMS_WEBHOOK_URL', '')
+        if not webhook_url:
+            return False
+        
+        # Check if already sent
+        channels = alert.notification_channels or ''
+        if 'teams' in channels:
+            return True
+        
+        try:
+            # Build Adaptive Card
+            risk_emojis = {
+                'critical': '🔴', 'high': '🟠', 
+                'medium': '🟡', 'low': '🟢', 'info': 'ℹ️'
+            }
+            
+            adaptive_card = {
+                "type": "AdaptiveCard",
+                "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+                "version": "1.4",
+                "body": [
+                    {
+                        "type": "TextBlock",
+                        "text": f"🚨 {alert.title}",
+                        "weight": "Bolder",
+                        "size": "Large",
+                        "wrap": True
+                    },
+                    {
+                        "type": "FactSet",
+                        "facts": [
+                            {"title": "Competitor", "value": alert.competitor.name if alert.competitor else 'Unknown'},
+                            {"title": "Risk Level", "value": f"{risk_emojis.get(alert.risk_level or 'medium', '⚪')} {(alert.risk_level or 'medium').upper()}"},
+                            {"title": "Detected", "value": alert.detected_at.strftime('%Y-%m-%d %H:%M UTC') if alert.detected_at else 'Now'}
+                        ]
+                    },
+                    {
+                        "type": "TextBlock",
+                        "text": (alert.summary or 'No details')[:300],
+                        "wrap": True,
+                        "spacing": "Medium"
+                    }
+                ],
+                "actions": [
+                    {
+                        "type": "Action.OpenUrl",
+                        "title": "View in CompIQ",
+                        "url": f"https://compiq-app.azurewebsites.net/alerts/{alert.id}"
+                    }
+                ]
+            }
+            
+            if alert.source_url:
+                adaptive_card["actions"].append({
+                    "type": "Action.OpenUrl",
+                    "title": "View Source",
+                    "url": alert.source_url
+                })
+            
+            message = {
+                "body": {
+                    "contentType": "application/vnd.microsoft.card.adaptive",
+                    "content": adaptive_card
+                }
+            }
+            
+            response = requests.post(webhook_url, json=message, timeout=15)
+            if response.status_code in [200, 202]:
+                alert.notification_sent = True
+                alert.notification_channels = (channels + ',teams').strip(',')
+                db.session.commit()
+                logger.info(f"Sent alert {alert.id} to Teams")
+                return True
+            else:
+                logger.warning(f"Teams webhook returned {response.status_code}")
+                return False
+        except Exception as e:
+            logger.error(f"Error sending alert {alert.id} to Teams: {e}")
+            return False
+    
     def _build_analysis_prompt(
         self, 
         content: str, 
@@ -374,6 +458,9 @@ Change Detected: {snapshot.captured_at}
         db.session.add(alert)
         db.session.commit()
         
+        # Auto-send to Teams if configured
+        self._notify_teams(alert)
+        
         logger.info(f"Created alert {alert.id} for page change on {monitored_url.url}")
         return alert
     
@@ -435,6 +522,9 @@ URL: {news_item.url}
         
         db.session.add(alert)
         db.session.commit()
+        
+        # Auto-send to Teams if configured
+        self._notify_teams(alert)
         
         logger.info(f"Created alert {alert.id} for news item: {news_item.title[:50]}")
         return alert

@@ -1463,11 +1463,182 @@ def teams_send_alert():
         response = requests.post(webhook_url, json=message, timeout=15)
         # Power Automate returns 202 Accepted, Teams returns 200 OK
         if response.status_code in [200, 202]:
+            # Mark alert as sent to Teams
+            if alert_id:
+                alert.notification_sent = True
+                channels = alert.notification_channels or ''
+                if 'teams' not in channels:
+                    alert.notification_channels = (channels + ',teams').strip(',')
+                db.session.commit()
             return jsonify({'success': True, 'message': 'Alert sent successfully!'})
         else:
             return jsonify({'success': False, 'error': f'Webhook returned status {response.status_code}: {response.text[:200]}'}), 400
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
+
+
+def send_alert_to_teams(alert: Alert) -> bool:
+    """
+    Internal helper function to send an alert to Teams.
+    Returns True if sent successfully, False otherwise.
+    """
+    import requests as req
+    
+    webhook_url = os.environ.get('TEAMS_WEBHOOK_URL', '')
+    
+    if not webhook_url:
+        return False
+    
+    # Check if already sent to Teams
+    channels = alert.notification_channels or ''
+    if 'teams' in channels:
+        return True  # Already sent
+    
+    title = alert.title
+    summary = alert.summary
+    risk_level = alert.risk_level or 'medium'
+    competitor = alert.competitor.name if alert.competitor else 'Unknown'
+    source_url = alert.source_url
+    alert_id = alert.id
+    detected_at = alert.detected_at.strftime('%Y-%m-%d %H:%M UTC') if alert.detected_at else 'Unknown'
+    
+    # Risk level emojis
+    risk_emojis = {
+        'critical': '🔴',
+        'high': '🟠', 
+        'medium': '🟡',
+        'low': '🟢',
+        'info': 'ℹ️'
+    }
+    
+    # Build Adaptive Card for Power Automate
+    adaptive_card = {
+        "type": "AdaptiveCard",
+        "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+        "version": "1.4",
+        "body": [
+            {
+                "type": "TextBlock",
+                "text": f"🚨 {title}",
+                "weight": "Bolder",
+                "size": "Large",
+                "wrap": True
+            },
+            {
+                "type": "FactSet",
+                "facts": [
+                    {"title": "Competitor", "value": competitor},
+                    {"title": "Risk Level", "value": f"{risk_emojis.get(risk_level, '⚪')} {risk_level.upper()}"},
+                    {"title": "Detected", "value": detected_at}
+                ]
+            },
+            {
+                "type": "TextBlock",
+                "text": summary[:300] if summary else 'No details available',
+                "wrap": True,
+                "spacing": "Medium"
+            }
+        ],
+        "actions": [
+            {
+                "type": "Action.OpenUrl",
+                "title": "View in CompIQ",
+                "url": f"https://compiq-app.azurewebsites.net/alerts/{alert_id}"
+            }
+        ]
+    }
+    
+    if source_url:
+        adaptive_card["actions"].append({
+            "type": "Action.OpenUrl",
+            "title": "View Source",
+            "url": source_url
+        })
+    
+    # Power Automate expects this structure
+    message = {
+        "body": {
+            "contentType": "application/vnd.microsoft.card.adaptive",
+            "content": adaptive_card
+        }
+    }
+    
+    try:
+        response = req.post(webhook_url, json=message, timeout=15)
+        if response.status_code in [200, 202]:
+            # Mark as sent
+            alert.notification_sent = True
+            channels = alert.notification_channels or ''
+            if 'teams' not in channels:
+                alert.notification_channels = (channels + ',teams').strip(',')
+            db.session.commit()
+            return True
+        return False
+    except Exception as e:
+        logging.getLogger(__name__).error(f"Error sending alert {alert_id} to Teams: {e}")
+        return False
+
+
+@api_bp.route('/integrations/teams/sync-all', methods=['POST'])
+def teams_sync_all():
+    """Send all alerts that haven't been sent to Teams yet."""
+    import requests as req
+    
+    webhook_url = os.environ.get('TEAMS_WEBHOOK_URL', '')
+    
+    if not webhook_url:
+        return jsonify({'success': False, 'error': 'Webhook not configured'}), 400
+    
+    # Get all alerts that haven't been sent to Teams
+    all_alerts = Alert.query.order_by(Alert.detected_at.asc()).all()
+    
+    sent_count = 0
+    skipped_count = 0
+    failed_count = 0
+    
+    for alert in all_alerts:
+        # Check if already sent to Teams
+        channels = alert.notification_channels or ''
+        if 'teams' in channels:
+            skipped_count += 1
+            continue
+        
+        # Send to Teams
+        if send_alert_to_teams(alert):
+            sent_count += 1
+            # Small delay to avoid rate limiting
+            import time
+            time.sleep(0.5)
+        else:
+            failed_count += 1
+    
+    return jsonify({
+        'success': True,
+        'sent': sent_count,
+        'skipped': skipped_count,
+        'failed': failed_count,
+        'message': f'Sent {sent_count} alerts to Teams ({skipped_count} already sent, {failed_count} failed)'
+    })
+
+
+@api_bp.route('/integrations/teams/stats')
+def teams_stats():
+    """Get Teams notification statistics."""
+    total_alerts = Alert.query.count()
+    
+    # Count alerts sent to Teams
+    sent_to_teams = Alert.query.filter(
+        Alert.notification_channels.like('%teams%')
+    ).count()
+    
+    not_sent = total_alerts - sent_to_teams
+    
+    return jsonify({
+        'total_alerts': total_alerts,
+        'sent_to_teams': sent_to_teams,
+        'not_sent': not_sent,
+        'webhook_configured': bool(os.environ.get('TEAMS_WEBHOOK_URL', ''))
+    })
 
 
 # =============================================================================
