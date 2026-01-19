@@ -485,8 +485,27 @@ Change Detected: {snapshot.captured_at}
         logger.info(f"Created alert {alert.id} for page change on {monitored_url.url}")
         return alert
     
+    def _has_recent_alert(self, source_url: str, hours: int = 6) -> bool:
+        """Check if an alert was created for this source URL within the specified hours."""
+        from datetime import timedelta
+        
+        cutoff_time = datetime.utcnow() - timedelta(hours=hours)
+        existing_alert = Alert.query.filter(
+            Alert.source_url == source_url,
+            Alert.detected_at >= cutoff_time
+        ).first()
+        
+        return existing_alert is not None
+    
     def analyze_news_item(self, news_item: NewsItem) -> Optional[Alert]:
         """Analyze a news item and optionally create an alert."""
+        # Rate limit: Only one alert per source URL every 6 hours
+        if self._has_recent_alert(news_item.url, hours=6):
+            logger.info(f"Skipping news item (rate limited - recent alert exists): {news_item.title[:50]}")
+            news_item.is_processed = True
+            db.session.commit()
+            return None
+        
         competitor = news_item.competitor if news_item.competitor_id else None
         competitor_name = competitor.name if competitor else "Unknown"
         

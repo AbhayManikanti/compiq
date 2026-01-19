@@ -21,6 +21,21 @@ logger = logging.getLogger(__name__)
 class NewsCollector:
     """Collects competitor news from various sources."""
     
+    # Keywords to filter out stock/finance related news
+    FINANCE_KEYWORDS = [
+        'stock price', 'share price', 'stock market', 'nasdaq', 'nyse', 
+        'market cap', 'earnings report', 'quarterly earnings', 'fiscal quarter',
+        'investor', 'shareholders', 'dividend', 'eps', 'revenue forecast',
+        'stock analysis', 'buy rating', 'sell rating', 'hold rating',
+        'price target', 'analyst rating', 'market outlook', 'trading volume',
+        'stock split', 'ipo', 'market value', 'equity research',
+        'wall street', 'hedge fund', 'mutual fund', 'etf',
+        'bull market', 'bear market', 'stock performance', 'valuation',
+        'p/e ratio', 'market capitalization', 'stock forecast',
+        'financial results', 'quarterly results', 'annual report',
+        'sec filing', '10-k', '10-q', 'earnings call', 'guidance'
+    ]
+    
     def __init__(self):
         self.newsapi_key = os.getenv('NEWSAPI_KEY')
         # Don't use NewsAPI if it's still the placeholder value
@@ -201,6 +216,17 @@ class NewsCollector:
         
         return False
     
+    def is_finance_news(self, title: str, description: str = '') -> bool:
+        """Check if the news article is about stock prices or finance."""
+        text = (title + ' ' + (description or '')).lower()
+        
+        for keyword in self.FINANCE_KEYWORDS:
+            if keyword in text:
+                logger.debug(f"Filtered finance news: {title[:50]}... (matched: {keyword})")
+                return True
+        
+        return False
+    
     def collect_competitor_news(self, competitor: Competitor, days_back: int = 7) -> List[NewsItem]:
         """Collect news for a specific competitor."""
         collected_items = []
@@ -222,6 +248,10 @@ class NewsCollector:
                 
                 # Check for duplicates
                 if self.is_duplicate(article['title'], article['url']):
+                    continue
+                
+                # Filter out stock/finance news
+                if self.is_finance_news(article['title'], article.get('description', '')):
                     continue
                 
                 # Create news item
@@ -252,6 +282,10 @@ class NewsCollector:
                 
                 # Check for duplicates
                 if self.is_duplicate(article['title'], article['url']):
+                    continue
+                
+                # Filter out stock/finance news
+                if self.is_finance_news(article['title'], article.get('description', '')):
                     continue
                 
                 # Create news item
