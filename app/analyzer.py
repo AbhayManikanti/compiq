@@ -293,6 +293,13 @@ Analyze the following {source_type} from competitor "{competitor_name}" and prov
 ## YOUR TASK
 Analyze this content and provide a structured assessment. Be specific and actionable.
 
+## PRIORITY GUIDANCE
+- Partnership signals should generally be rated HIGH risk (risk_score 65-85) as they can significantly alter competitive dynamics
+- Partnerships with major tech companies (Microsoft, Google, Amazon, Siemens, Schneider Electric, etc.) should be rated HIGH (risk_score 75-90)
+- Partnerships with industry leaders or Fortune 500 companies warrant HIGH priority
+- Only rate partnerships as CRITICAL (risk_score 85+) if they directly threaten Fluke's core markets or involve exclusive deals
+- Smaller partnerships with regional distributors or niche players can remain MEDIUM (risk_score 45-65)
+
 Respond with a JSON object containing:
 {{
     "summary": "2-3 sentence executive summary of the change/news",

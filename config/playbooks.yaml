@@ -122,7 +122,7 @@ playbooks:
   partnership:
     name: "Competitor Partnership/Alliance"
     description: "A competitor has announced a strategic partnership"
-    urgency: medium
+    urgency: high
     actions:
       - action: "Research partnership terms and scope"
         owner: "Competitive Intelligence"
