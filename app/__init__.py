@@ -4,10 +4,15 @@ Competitor Monitor Application Package
 from flask import Flask
 from flask_cors import CORS
 import os
+import logging
 from pathlib import Path
 from dotenv import load_dotenv
 
 load_dotenv()
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Base directory for the project
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -21,6 +26,9 @@ else:
 
 # Ensure data directory exists
 DATA_DIR.mkdir(exist_ok=True)
+
+# Global scheduler instance
+scheduler = None
 
 
 def create_app():
@@ -95,4 +103,87 @@ def create_app():
         except (json.JSONDecodeError, TypeError):
             return []
     
+    # Initialize background scheduler for auto-updates
+    init_scheduler(app)
+    
     return app
+
+
+def init_scheduler(app):
+    """Initialize APScheduler for background tasks."""
+    global scheduler
+    
+    # Only run scheduler in main worker process (not in reloader subprocess)
+    if os.environ.get('WERKZEUG_RUN_MAIN') == 'true' or not app.debug:
+        try:
+            from apscheduler.schedulers.background import BackgroundScheduler
+            from apscheduler.triggers.interval import IntervalTrigger
+            
+            scheduler = BackgroundScheduler()
+            
+            # Get schedule intervals from environment
+            monitor_hours = int(os.getenv('MONITOR_SCHEDULE_HOURS', 6))
+            news_hours = int(os.getenv('NEWS_CHECK_HOURS', 6))
+            
+            # Add news collection job
+            scheduler.add_job(
+                func=lambda: run_scheduled_job(app, 'news'),
+                trigger=IntervalTrigger(hours=news_hours),
+                id='scheduled_news_collection',
+                name='News Collection',
+                replace_existing=True
+            )
+            
+            # Add page monitoring job
+            scheduler.add_job(
+                func=lambda: run_scheduled_job(app, 'pages'),
+                trigger=IntervalTrigger(hours=monitor_hours),
+                id='scheduled_page_monitor',
+                name='Page Monitor',
+                replace_existing=True
+            )
+            
+            scheduler.start()
+            logger.info(f"Scheduler started: News every {news_hours}h, Pages every {monitor_hours}h")
+            
+        except Exception as e:
+            logger.warning(f"Could not start scheduler: {e}")
+
+
+def run_scheduled_job(app, job_type):
+    """Run a scheduled monitoring job."""
+    with app.app_context():
+        try:
+            if job_type == 'news':
+                from .news_collector import NewsCollector
+                from .analyzer import Analyzer
+                
+                logger.info("Running scheduled news collection...")
+                collector = NewsCollector()
+                results = collector.collect_all_news()
+                total = sum(len(items) for items in results.values())
+                logger.info(f"Collected {total} news items")
+                
+                # Run analysis on new items
+                if total > 0:
+                    analyzer = Analyzer()
+                    analysis = analyzer.process_pending_items()
+                    logger.info(f"Created {analysis['alerts_created']} alerts")
+                    
+            elif job_type == 'pages':
+                from .monitor import PageMonitor
+                from .analyzer import Analyzer
+                
+                logger.info("Running scheduled page monitoring...")
+                monitor = PageMonitor()
+                changes = monitor.check_all_urls()
+                logger.info(f"Found {len(changes)} page changes")
+                
+                # Run analysis on changes
+                if changes:
+                    analyzer = Analyzer()
+                    analysis = analyzer.process_pending_items()
+                    logger.info(f"Created {analysis['alerts_created']} alerts")
+                    
+        except Exception as e:
+            logger.error(f"Scheduled job error ({job_type}): {e}")

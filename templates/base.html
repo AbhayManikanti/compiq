@@ -264,7 +264,7 @@
                 <li>
                     <a href="{{ url_for('main.alerts_list') }}" class="{% if 'alert' in request.endpoint %}active{% endif %}">
                         <i class="bi bi-bell"></i> Alerts
-                        <span class="badge bg-danger ms-auto" id="alertCount">0</span>
+                        <span class="badge bg-danger ms-auto" id="sidebarAlertCount">0</span>
                     </a>
                 </li>
                 <li>
@@ -430,23 +430,63 @@
                 });
                 
                 if (result.success) {
-                    showToast('Monitor', `Completed! Created ${result.results.alerts_created} alerts.`, 'success');
-                    refreshData();
+                    showToast('Monitor', 'Monitor started! Collecting and analyzing data in background...', 'success');
+                    // Poll for completion
+                    pollMonitorStatus();
                 } else {
-                    showToast('Monitor', 'Monitor run failed: ' + result.error, 'error');
+                    showToast('Monitor', 'Monitor run failed: ' + (result.error || 'Unknown error'), 'error');
                 }
             } catch (error) {
                 showToast('Monitor', 'Monitor run failed', 'error');
             }
         }
         
+        async function pollMonitorStatus() {
+            let attempts = 0;
+            const maxAttempts = 60; // Poll for up to 5 minutes
+            
+            const poll = async () => {
+                try {
+                    const status = await fetchAPI('/monitor/status');
+                    
+                    if (!status.running) {
+                        // Monitor finished
+                        if (status.last_results && !status.last_results.error) {
+                            const results = status.last_results;
+                            showToast('Monitor Complete', 
+                                `Created ${results.alerts_created || 0} alerts, collected ${results.news_collected || 0} news items.`, 
+                                'success');
+                            refreshData();
+                        } else if (status.last_results && status.last_results.error) {
+                            showToast('Monitor Error', status.last_results.error, 'error');
+                        }
+                        return;
+                    }
+                    
+                    attempts++;
+                    if (attempts < maxAttempts) {
+                        setTimeout(poll, 5000); // Poll every 5 seconds
+                    } else {
+                        showToast('Monitor', 'Monitor is still running. Check back later.', 'info');
+                    }
+                } catch (error) {
+                    console.error('Error polling monitor status:', error);
+                }
+            };
+            
+            setTimeout(poll, 5000); // Start polling after 5 seconds
+        }
+        
         async function refreshData() {
             document.getElementById('lastUpdated').textContent = new Date().toLocaleTimeString();
             
-            // Update alert count in sidebar
+            // Update alert count in sidebar - show unresolved alerts
             try {
                 const stats = await fetchAPI('/stats');
-                document.getElementById('alertCount').textContent = stats.summary.new_alerts_24h || 0;
+                const sidebarCount = document.getElementById('sidebarAlertCount');
+                if (sidebarCount) {
+                    sidebarCount.textContent = stats.summary.unresolved_alerts || 0;
+                }
             } catch (error) {
                 console.error('Error refreshing data:', error);
             }

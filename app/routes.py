@@ -1,11 +1,13 @@
 """
 Flask Routes for Web Dashboard and API
 """
-from flask import Blueprint, render_template, jsonify, request, redirect, url_for, send_file
+from flask import Blueprint, render_template, jsonify, request, redirect, url_for, send_file, current_app
 from datetime import datetime, timedelta
 import json
 import io
 import os
+import threading
+import logging
 from .database import (
     db, Alert, Competitor, MonitoredURL, PageSnapshot, NewsItem, Insight,
     AlertStatus, RiskLevel, SignalType,
@@ -522,13 +524,77 @@ def refresh_news():
 # API ROUTES - Monitor Actions
 # =============================================================================
 
+# Background monitor job storage
+_monitor_status = {'running': False, 'last_run': None, 'last_results': None}
+
+def _run_monitor_background(app, run_pages, run_news, run_analysis, send_alerts):
+    """Run monitor tasks in background thread."""
+    global _monitor_status
+    
+    with app.app_context():
+        from .monitor import PageMonitor
+        from .news_collector import NewsCollector
+        from .analyzer import Analyzer
+        from .alerter import Alerter
+        
+        results = {
+            'page_changes': [],
+            'news_collected': 0,
+            'alerts_created': 0,
+            'notifications_sent': 0
+        }
+        
+        try:
+            # Run page monitoring
+            if run_pages:
+                monitor = PageMonitor()
+                changes = monitor.check_all_urls(force=True)
+                results['page_changes'] = [
+                    {
+                        'url': s.monitored_url.url,
+                        'competitor': s.monitored_url.competitor.name
+                    }
+                    for s in changes
+                ]
+            
+            # Run news collection
+            if run_news:
+                collector = NewsCollector()
+                news_results = collector.collect_all_news()
+                results['news_collected'] = sum(len(items) for items in news_results.values())
+            
+            # Run analysis
+            if run_analysis:
+                analyzer = Analyzer()
+                analysis_results = analyzer.process_pending_items()
+                results['alerts_created'] = analysis_results['alerts_created']
+            
+            # Send notifications
+            if send_alerts:
+                alerter = Alerter()
+                alert_results = alerter.send_pending_alerts()
+                results['notifications_sent'] = alert_results['sent']
+            
+            _monitor_status['last_results'] = results
+            _monitor_status['last_run'] = datetime.utcnow().isoformat()
+            
+        except Exception as e:
+            _monitor_status['last_results'] = {'error': str(e)}
+        finally:
+            _monitor_status['running'] = False
+
+
 @api_bp.route('/monitor/run', methods=['POST'])
 def run_monitor():
-    """Trigger a manual monitoring run."""
-    from .monitor import PageMonitor
-    from .news_collector import NewsCollector
-    from .analyzer import Analyzer
-    from .alerter import Alerter
+    """Trigger a manual monitoring run (runs in background)."""
+    global _monitor_status
+    
+    if _monitor_status['running']:
+        return jsonify({
+            'success': False,
+            'error': 'Monitor is already running',
+            'status': 'running'
+        }), 409
     
     data = request.get_json() or {}
     run_pages = data.get('pages', True)
@@ -536,54 +602,32 @@ def run_monitor():
     run_analysis = data.get('analyze', True)
     send_alerts = data.get('alert', False)
     
-    results = {
-        'page_changes': [],
-        'news_collected': 0,
-        'alerts_created': 0,
-        'notifications_sent': 0
-    }
+    _monitor_status['running'] = True
     
-    try:
-        # Run page monitoring
-        if run_pages:
-            monitor = PageMonitor()
-            changes = monitor.check_all_urls(force=True)
-            results['page_changes'] = [
-                {
-                    'url': s.monitored_url.url,
-                    'competitor': s.monitored_url.competitor.name
-                }
-                for s in changes
-            ]
-        
-        # Run news collection
-        if run_news:
-            collector = NewsCollector()
-            news_results = collector.collect_all_news()
-            results['news_collected'] = sum(len(items) for items in news_results.values())
-        
-        # Run analysis
-        if run_analysis:
-            analyzer = Analyzer()
-            analysis_results = analyzer.process_pending_items()
-            results['alerts_created'] = analysis_results['alerts_created']
-        
-        # Send notifications
-        if send_alerts:
-            alerter = Alerter()
-            alert_results = alerter.send_pending_alerts()
-            results['notifications_sent'] = alert_results['sent']
-        
-        return jsonify({
-            'success': True,
-            'results': results
-        })
-        
-    except Exception as e:
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
+    # Start background thread
+    app = current_app._get_current_object()
+    thread = threading.Thread(
+        target=_run_monitor_background,
+        args=(app, run_pages, run_news, run_analysis, send_alerts)
+    )
+    thread.daemon = True
+    thread.start()
+    
+    return jsonify({
+        'success': True,
+        'message': 'Monitor started in background',
+        'status': 'started'
+    })
+
+
+@api_bp.route('/monitor/status', methods=['GET'])
+def get_monitor_status():
+    """Get the status of the background monitor."""
+    return jsonify({
+        'running': _monitor_status['running'],
+        'last_run': _monitor_status['last_run'],
+        'last_results': _monitor_status['last_results']
+    })
 
 
 @api_bp.route('/monitor/check-url', methods=['POST'])
