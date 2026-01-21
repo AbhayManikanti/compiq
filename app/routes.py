@@ -630,6 +630,48 @@ def get_monitor_status():
     })
 
 
+# =============================================================================
+# Admin utilities (protected by optional ADMIN_TOKEN)
+# =============================================================================
+@api_bp.route('/admin/purge/finance-alerts', methods=['POST'])
+def purge_finance_alerts():
+    token = os.getenv('ADMIN_TOKEN')
+    if token and request.headers.get('X-Admin-Token') != token:
+        return jsonify({'success': False, 'error': 'Unauthorized'}), 403
+    
+    try:
+        from .database import db, Alert, NewsItem
+        from .news_collector import NewsCollector
+        
+        keywords = [k.lower() for k in NewsCollector.FINANCE_KEYWORDS]
+        deleted = 0
+        
+        alerts = Alert.query.filter_by(source_type='news').all()
+        for alert in alerts:
+            text = ' '.join(filter(None, [
+                alert.title or '',
+                alert.summary or '',
+                alert.raw_content or ''
+            ])).lower()
+            match = any(k in text for k in keywords)
+            
+            if not match and alert.source_id:
+                ni = NewsItem.query.get(alert.source_id)
+                if ni:
+                    blob = ' '.join(filter(None, [ni.title or '', ni.description or '', ni.content or ''])).lower()
+                    match = any(k in blob for k in keywords)
+            
+            if match:
+                db.session.delete(alert)
+                deleted += 1
+        
+        db.session.commit()
+        return jsonify({'success': True, 'deleted': deleted})
+    except Exception as e:
+        logging.getLogger(__name__).error(f"Purge finance alerts failed: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 @api_bp.route('/monitor/check-url', methods=['POST'])
 def check_single_url():
     """Check a single URL for changes."""

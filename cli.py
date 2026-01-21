@@ -173,6 +173,36 @@ def cmd_alerts(args):
             db.session.commit()
             
             print(f"Alert {args.id} resolved.")
+        
+        elif args.action == 'purge-finance':
+            # Delete alerts related to stock/finance news
+            from app.database import db, NewsItem
+            from app.news_collector import NewsCollector
+            
+            keywords = [k.lower() for k in NewsCollector.FINANCE_KEYWORDS]
+            deleted = 0
+            
+            alerts = Alert.query.filter_by(source_type='news').all()
+            for alert in alerts:
+                text = ' '.join(filter(None, [
+                    alert.title or '',
+                    alert.summary or '',
+                    alert.raw_content or ''
+                ])).lower()
+                match = any(k in text for k in keywords)
+                
+                if not match and alert.source_id:
+                    ni = NewsItem.query.get(alert.source_id)
+                    if ni:
+                        blob = ' '.join(filter(None, [ni.title or '', ni.description or '', ni.content or ''])).lower()
+                        match = any(k in blob for k in keywords)
+                
+                if match:
+                    db.session.delete(alert)
+                    deleted += 1
+            
+            db.session.commit()
+            print(f"Deleted {deleted} finance-related alerts.")
 
 
 def cmd_notify(args):
@@ -329,7 +359,7 @@ def main():
     
     # alerts command
     alerts_parser = subparsers.add_parser('alerts', help='Manage alerts')
-    alerts_parser.add_argument('action', choices=['list', 'acknowledge', 'resolve'], help='Action')
+    alerts_parser.add_argument('action', choices=['list', 'acknowledge', 'resolve', 'purge-finance'], help='Action')
     alerts_parser.add_argument('--id', type=int, help='Alert ID')
     alerts_parser.add_argument('--status', help='Filter by status')
     alerts_parser.add_argument('--risk', help='Filter by risk level')

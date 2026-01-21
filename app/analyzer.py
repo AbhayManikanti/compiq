@@ -506,6 +506,20 @@ Change Detected: {snapshot.captured_at}
             db.session.commit()
             return None
         
+        # Finance-news guard: skip finance/stock items before analysis
+        try:
+            from .news_collector import NewsCollector
+            finance_keywords = [k.lower() for k in NewsCollector.FINANCE_KEYWORDS]
+            blob = " ".join(filter(None, [news_item.title, news_item.description, news_item.content])).lower()
+            if any(k in blob for k in finance_keywords):
+                news_item.is_processed = True
+                db.session.commit()
+                logger.info("Skipped finance-related news item")
+                return None
+        except Exception:
+            # If anything goes wrong, don't block processing
+            pass
+        
         competitor = news_item.competitor if news_item.competitor_id else None
         competitor_name = competitor.name if competitor else "Unknown"
         
