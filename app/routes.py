@@ -2648,6 +2648,194 @@ def populate_demo_data():
         return jsonify({'error': str(e)}), 500
 
 
+@api_bp.route('/demo/populate-quality', methods=['POST'])
+def populate_quality_data():
+    """Populate database with high-quality strategic data."""
+    import random
+    
+    try:
+        # Competitors with full details
+        COMPETITORS = [
+            {'name': 'Hioki', 'description': 'Japanese manufacturer of precision electronic measuring instruments, known for power analyzers and battery testers.', 'website': 'https://www.hioki.com', 'logo_url': 'https://logo.clearbit.com/hioki.com'},
+            {'name': 'Keysight Technologies', 'description': 'Leading electronic design and test solutions provider. Strong in oscilloscopes, signal analyzers, and 5G testing.', 'website': 'https://www.keysight.com', 'logo_url': 'https://logo.clearbit.com/keysight.com'},
+            {'name': 'Rohde & Schwarz', 'description': 'German electronics group specializing in test & measurement, broadcast & media, and cybersecurity.', 'website': 'https://www.rohde-schwarz.com', 'logo_url': 'https://logo.clearbit.com/rohde-schwarz.com'},
+            {'name': 'National Instruments', 'description': 'Provider of automated test equipment and virtual instrumentation software. Strong in LabVIEW ecosystem.', 'website': 'https://www.ni.com', 'logo_url': 'https://logo.clearbit.com/ni.com'},
+            {'name': 'Tektronix', 'description': 'American company best known for oscilloscopes and logic analyzers. Part of Fortive Corporation.', 'website': 'https://www.tek.com', 'logo_url': 'https://logo.clearbit.com/tek.com'},
+            {'name': 'Amprobe', 'description': 'Manufacturer of electrical test tools and HVAC testing equipment. Known for clamp meters and multimeters.', 'website': 'https://www.amprobe.com', 'logo_url': 'https://logo.clearbit.com/amprobe.com'},
+            {'name': 'Klein Tools', 'description': 'American manufacturer of hand tools and electrical testing equipment. Strong brand loyalty among electricians.', 'website': 'https://www.kleintools.com', 'logo_url': 'https://logo.clearbit.com/kleintools.com'},
+        ]
+        
+        # Create competitors
+        competitors = {}
+        for comp_data in COMPETITORS:
+            comp = Competitor.query.filter_by(name=comp_data['name']).first()
+            if not comp:
+                comp = Competitor(
+                    name=comp_data['name'],
+                    description=comp_data['description'],
+                    website=comp_data['website'],
+                    logo_url=comp_data['logo_url'],
+                    is_active=True
+                )
+                db.session.add(comp)
+                db.session.flush()
+            competitors[comp_data['name']] = comp
+        
+        # Create battle cards
+        BATTLE_CARDS = {
+            'Hioki': {
+                'elevator_pitch': 'While Hioki excels in power analyzers and battery testing, our solutions offer broader integration capabilities, better software ecosystems, and more competitive pricing for the North American market.',
+                'target_segment': 'Power electronics, EV/battery manufacturers, R&D labs',
+                'our_strengths': ['Superior software integration and API support', 'Faster customer support response times in NA', 'More competitive pricing on mid-range products', 'Better cloud connectivity and data management'],
+                'our_weaknesses': ['Less specialized in ultra-high precision power analysis', 'Smaller presence in Asian markets'],
+                'competitor_strengths': ['Industry-leading accuracy in power analyzers', 'Strong reputation in battery testing for EVs', 'Excellent build quality and reliability'],
+                'competitor_weaknesses': ['Higher price point across product lines', 'Limited software ecosystem integration', 'Slower to adopt cloud-based solutions'],
+                'key_differentiators': ['Our connected platform reduces data silos', 'Faster time-to-insight with built-in analytics', '30% lower total cost of ownership over 5 years'],
+                'trap_questions': ['How important is real-time cloud data access for your team?', 'What percentage of your testing requires API integration?'],
+                'common_objections': [{'objection': 'Hioki has better accuracy specs', 'response': 'For 95% of applications, our accuracy exceeds requirements. The real differentiator is what you do with the data.'}]
+            },
+            'Keysight Technologies': {
+                'elevator_pitch': 'Keysight dominates high-end R&D, but our solutions deliver comparable performance for production testing at 40% lower cost, with faster deployment.',
+                'target_segment': 'RF/Microwave testing, 5G development, semiconductor test',
+                'our_strengths': ['More intuitive user interface', 'Lower cost of ownership', 'Flexible licensing models', 'Better production-floor durability'],
+                'our_weaknesses': ['Less comprehensive high-frequency RF portfolio', 'Smaller R&D application engineering team'],
+                'competitor_strengths': ['Broadest RF/microwave test portfolio', 'Leading 5G test capabilities', 'Massive application engineering resources'],
+                'competitor_weaknesses': ['Premium pricing', 'Complex licensing structures', 'Can be overkill for production testing'],
+                'key_differentiators': ['Production-optimized solutions vs R&D focus', '60% faster first-measurement time'],
+                'trap_questions': ['What percentage of your tests are production vs R&D?', 'How much do you spend annually on software licenses?'],
+                'common_objections': [{'objection': 'Keysight is the industry standard', 'response': 'For R&D, perhaps. But production testing has different needs - speed, reliability, and TCO matter more.'}]
+            },
+        }
+        
+        for comp_name, card_data in BATTLE_CARDS.items():
+            comp = competitors.get(comp_name)
+            if comp:
+                existing = BattleCard.query.filter_by(competitor_id=comp.id).first()
+                if not existing:
+                    card = BattleCard(
+                        competitor_id=comp.id,
+                        name=f"{comp_name} Battle Card",
+                        status='active',
+                        elevator_pitch=card_data['elevator_pitch'],
+                        target_segment=card_data['target_segment'],
+                        our_strengths=json.dumps(card_data['our_strengths']),
+                        our_weaknesses=json.dumps(card_data['our_weaknesses']),
+                        competitor_strengths=json.dumps(card_data['competitor_strengths']),
+                        competitor_weaknesses=json.dumps(card_data['competitor_weaknesses']),
+                        key_differentiators=json.dumps(card_data['key_differentiators']),
+                        trap_questions=json.dumps(card_data['trap_questions']),
+                        common_objections=json.dumps(card_data['common_objections']),
+                        last_reviewed_at=datetime.utcnow()
+                    )
+                    db.session.add(card)
+        
+        # Create quality news items (no finance spam)
+        NEWS_ITEMS = [
+            {'competitor': 'Hioki', 'title': 'Hioki Launches Next-Generation Power Analyzer with Enhanced EV Testing Capabilities', 'category': 'product_launch', 'source_type': 'rss', 'source': 'Hioki Press Room', 'days_ago': 2, 'summary': 'New PW8001 power analyzer offers improved accuracy and dedicated EV motor testing modes.'},
+            {'competitor': 'Hioki', 'title': 'Hioki Expands Battery Test Solutions for Gigafactory Applications', 'category': 'product_launch', 'source_type': 'newsapi', 'source': 'Electronics Weekly', 'days_ago': 5, 'summary': 'Company announces new high-throughput battery testing systems for large-scale EV battery production.'},
+            {'competitor': 'Hioki', 'title': 'Hioki Partners with Major Japanese Automaker on EV Development Tools', 'category': 'partnership', 'source_type': 'google_news', 'source': 'Automotive News', 'days_ago': 8, 'summary': 'Strategic partnership will integrate Hioki testing equipment into next-generation EV development.'},
+            {'competitor': 'Keysight Technologies', 'title': 'Keysight Unveils Industry-First 6G Test Platform at MWC', 'category': 'product_launch', 'source_type': 'newsapi', 'source': 'FierceWireless', 'days_ago': 1, 'summary': 'New platform supports sub-THz frequencies and AI-native testing capabilities.'},
+            {'competitor': 'Keysight Technologies', 'title': 'Keysight Acquires AI Software Company to Enhance Test Automation', 'category': 'acquisition', 'source_type': 'rss', 'source': 'Keysight Newsroom', 'days_ago': 4, 'summary': 'Strategic acquisition adds machine learning capabilities to test portfolio.'},
+            {'competitor': 'Keysight Technologies', 'title': 'Keysight and NVIDIA Collaborate on AI Chip Testing Solutions', 'category': 'partnership', 'source_type': 'google_news', 'source': 'EE Times', 'days_ago': 7, 'summary': 'Partnership aims to accelerate validation of AI accelerator chips.'},
+            {'competitor': 'Rohde & Schwarz', 'title': 'R&S Wins Major European Defense Contract for Secure Communications Testing', 'category': 'other', 'source_type': 'rss', 'source': 'R&S Press Center', 'days_ago': 3, 'summary': 'Multi-year contract covers testing equipment for NATO military communication systems.'},
+            {'competitor': 'Rohde & Schwarz', 'title': 'R&S Launches EMC Test Solution for Electric Aircraft Certification', 'category': 'product_launch', 'source_type': 'newsapi', 'source': 'Aviation Week', 'days_ago': 6, 'summary': 'New test system addresses EMC requirements for emerging eVTOL market.'},
+            {'competitor': 'National Instruments', 'title': 'NI Releases Major LabVIEW Update with Enhanced Python Integration', 'category': 'feature_update', 'source_type': 'rss', 'source': 'NI News', 'days_ago': 2, 'summary': 'LabVIEW 2024 introduces native Python node support and improved ML toolkit.'},
+            {'competitor': 'National Instruments', 'title': 'NI Launches Modular EV Powertrain Test System', 'category': 'product_launch', 'source_type': 'newsapi', 'source': 'Test & Measurement World', 'days_ago': 9, 'summary': 'Scalable PXI-based system supports complete powertrain validation.'},
+            {'competitor': 'Tektronix', 'title': 'Tektronix Introduces 8-Channel Oscilloscope for Complex System Debug', 'category': 'product_launch', 'source_type': 'rss', 'source': 'Tek Newsroom', 'days_ago': 4, 'summary': 'New MSO68 series offers 8 analog and 64 digital channels.'},
+            {'competitor': 'Tektronix', 'title': 'Tektronix Adds PCIe 6.0 Protocol Decode to Oscilloscope Portfolio', 'category': 'feature_update', 'source_type': 'newsapi', 'source': 'Electronic Design', 'days_ago': 11, 'summary': 'Software update enables debugging of PCIe 6.0 designs at 64 GT/s.'},
+            {'competitor': 'Klein Tools', 'title': 'Klein Tools Launches Bluetooth-Connected Test Meter Line', 'category': 'product_launch', 'source_type': 'rss', 'source': 'Klein Tools Blog', 'days_ago': 3, 'summary': 'New MM700 series multimeters feature Bluetooth and companion app.'},
+            {'competitor': 'Klein Tools', 'title': 'Klein Tools Partners with Trade Schools on Apprenticeship Program', 'category': 'partnership', 'source_type': 'google_news', 'source': 'Construction Dive', 'days_ago': 15, 'summary': 'Initiative provides tool kits and training for next generation electricians.'},
+            {'competitor': 'Amprobe', 'title': 'Amprobe Releases New Line of Industrial-Grade Clamp Meters', 'category': 'product_launch', 'source_type': 'rss', 'source': 'Amprobe News', 'days_ago': 6, 'summary': 'AMP-420 series offers CAT IV 600V rating for industrial testing.'},
+        ]
+        
+        for news_data in NEWS_ITEMS:
+            comp = competitors.get(news_data['competitor'])
+            if comp:
+                existing = NewsItem.query.filter_by(title=news_data['title']).first()
+                if not existing:
+                    published_at = datetime.utcnow() - timedelta(days=news_data['days_ago'])
+                    news = NewsItem(
+                        competitor_id=comp.id,
+                        title=news_data['title'],
+                        summary=news_data['summary'],
+                        description=news_data['summary'],
+                        source=news_data['source'],
+                        source_type=news_data['source_type'],
+                        category=news_data['category'],
+                        url=f"https://example.com/news/{news_data['title'][:30].lower().replace(' ', '-')}",
+                        published_at=published_at,
+                        collected_at=published_at + timedelta(hours=random.randint(1, 6)),
+                        is_processed=True,
+                        is_relevant=True
+                    )
+                    db.session.add(news)
+        
+        # Create high-quality strategic alerts (no finance spam)
+        ALERTS = [
+            {'competitor': 'Keysight Technologies', 'signal_type': 'product_launch', 'risk_level': 'critical', 'title': 'Keysight Announces 6G Test Platform with Sub-THz Capabilities', 'summary': 'Keysight unveiled an industry-first 6G test platform supporting frequencies up to 300 GHz. This positions them as the early leader in 6G test equipment.', 'actions': ['Accelerate our 6G roadmap discussion', 'Brief sales team on competitive positioning']},
+            {'competitor': 'National Instruments', 'signal_type': 'feature_update', 'risk_level': 'critical', 'title': 'NI LabVIEW 2024 Adds Native Python Integration', 'summary': 'NI has addressed one of the biggest criticisms of LabVIEW by adding seamless Python integration. This could slow customer migration to open platforms.', 'actions': ['Update competitive battle card', 'Prepare counter-messaging for sales team']},
+            {'competitor': 'Rohde & Schwarz', 'signal_type': 'acquisition', 'risk_level': 'high', 'title': 'R&S Acquires EMC Test Startup for eVTOL Market', 'summary': 'Rohde & Schwarz acquired a specialized EMC software company focused on electric aircraft certification.', 'actions': ['Research acquired company capabilities', 'Assess our eVTOL market positioning']},
+            {'competitor': 'Hioki', 'signal_type': 'partnership', 'risk_level': 'high', 'title': 'Hioki Partners with Toyota on EV Battery Testing Standards', 'summary': 'Strategic partnership with Toyota to develop next-generation battery testing standards. This could influence industry standards.', 'actions': ['Monitor for published standards', 'Engage our automotive OEM contacts']},
+            {'competitor': 'Tektronix', 'signal_type': 'product_launch', 'risk_level': 'high', 'title': 'Tektronix Launches 8-Channel MSO for Complex System Debug', 'summary': 'New MSO68 series offers 8 analog + 64 digital channels at competitive price point.', 'actions': ['Request detailed competitive analysis', 'Identify at-risk opportunities']},
+            {'competitor': 'Klein Tools', 'signal_type': 'product_launch', 'risk_level': 'medium', 'title': 'Klein Tools Enters Smart Connected Meter Market', 'summary': 'Klein launched their first Bluetooth-connected multimeter line with companion app.', 'actions': ['Evaluate app functionality', 'Brief field sales on positioning']},
+            {'competitor': 'Amprobe', 'signal_type': 'product_launch', 'risk_level': 'medium', 'title': 'Amprobe Releases Low-GWP Refrigerant Analyzers', 'summary': 'New analyzers support next-generation refrigerants ahead of regulatory deadlines.', 'actions': ['Review our HVAC product roadmap', 'Assess regulatory timeline impact']},
+            {'competitor': 'Keysight Technologies', 'signal_type': 'partnership', 'risk_level': 'medium', 'title': 'Keysight and NVIDIA Collaborate on AI Chip Testing', 'summary': 'Partnership to develop specialized test solutions for AI accelerator validation.', 'actions': ['Track developments in AI chip test space', 'Identify our AI/ML semiconductor customers']},
+        ]
+        
+        for alert_data in ALERTS:
+            comp = competitors.get(alert_data['competitor'])
+            if comp:
+                existing = Alert.query.filter_by(title=alert_data['title']).first()
+                if not existing:
+                    days_ago = 1 if alert_data['risk_level'] == 'critical' else (3 if alert_data['risk_level'] == 'high' else 7)
+                    alert = Alert(
+                        competitor_id=comp.id,
+                        title=alert_data['title'],
+                        summary=alert_data['summary'],
+                        signal_type=alert_data['signal_type'],
+                        risk_level=alert_data['risk_level'],
+                        risk_score=random.randint(70, 95) if alert_data['risk_level'] in ['critical', 'high'] else random.randint(40, 70),
+                        confidence_score=random.randint(75, 95),
+                        status='new',
+                        source_type='news',
+                        recommended_actions=json.dumps(alert_data['actions']),
+                        detected_at=datetime.utcnow() - timedelta(days=days_ago, hours=random.randint(0, 12))
+                    )
+                    db.session.add(alert)
+        
+        # Create monitored URLs
+        for comp_name, comp in competitors.items():
+            if MonitoredURL.query.filter_by(competitor_id=comp.id).count() == 0:
+                for name, path, page_type in [('Products', '/products', 'product_page'), ('News', '/news', 'news_page'), ('Pricing', '/pricing', 'pricing_page')]:
+                    url = MonitoredURL(
+                        competitor_id=comp.id,
+                        url=f"{comp.website}{path}",
+                        name=f"{comp_name} {name}",
+                        page_type=page_type,
+                        is_active=True,
+                        check_interval_hours=24
+                    )
+                    db.session.add(url)
+        
+        db.session.commit()
+        
+        return jsonify({
+            'message': 'Quality data populated successfully',
+            'populated': True,
+            'counts': {
+                'competitors': Competitor.query.count(),
+                'alerts': Alert.query.count(),
+                'news': NewsItem.query.count(),
+                'battle_cards': BattleCard.query.count(),
+                'monitored_urls': MonitoredURL.query.count()
+            }
+        })
+    except Exception as e:
+        db.session.rollback()
+        import traceback
+        return jsonify({'error': str(e), 'traceback': traceback.format_exc()}), 500
+
+
 @api_bp.route('/demo/reset', methods=['POST'])
 def reset_demo_data():
     """Reset all demo data."""
