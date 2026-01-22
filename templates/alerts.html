@@ -4,9 +4,24 @@
 {% block page_title %}Alerts{% endblock %}
 
 {% block content %}
-<!-- Filters -->
+<!-- Search and Filters -->
 <div class="card mb-4">
     <div class="card-body">
+        <!-- Search Bar -->
+        <div class="row mb-3">
+            <div class="col-12">
+                <div class="input-group">
+                    <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+                    <input type="text" class="form-control" id="searchAlerts" 
+                           placeholder="Search alerts by keyword, competitor, or product..." 
+                           onkeypress="if(event.key==='Enter') applyFilters()">
+                    <button class="btn btn-primary" onclick="applyFilters()">
+                        <i class="bi bi-search"></i> Search
+                    </button>
+                </div>
+            </div>
+        </div>
+        <!-- Filters Row -->
         <div class="row g-3 align-items-end">
             <div class="col-md-2">
                 <label class="form-label">Status</label>
@@ -37,9 +52,9 @@
                 </select>
             </div>
             <div class="col-md-2">
-                <label class="form-label">Signal Type</label>
+                <label class="form-label">Category</label>
                 <select class="form-select" id="filterSignal">
-                    <option value="">All Types</option>
+                    <option value="">All Categories</option>
                     <option value="product_launch">Product Launch</option>
                     <option value="pricing_change">Pricing Change</option>
                     <option value="feature_update">Feature Update</option>
@@ -60,8 +75,8 @@
                 </select>
             </div>
             <div class="col-md-2">
-                <button class="btn btn-primary w-100" onclick="applyFilters()">
-                    <i class="bi bi-funnel"></i> Apply Filters
+                <button class="btn btn-outline-secondary w-100" onclick="clearFilters()">
+                    <i class="bi bi-x-circle"></i> Clear
                 </button>
             </div>
         </div>
@@ -140,12 +155,14 @@ async function loadAlerts(page = 1) {
     params.set('page', page);
     params.set('per_page', 20);
     
+    const search = document.getElementById('searchAlerts').value;
     const status = document.getElementById('filterStatus').value;
     const risk = document.getElementById('filterRisk').value;
     const competitor = document.getElementById('filterCompetitor').value;
     const signal = document.getElementById('filterSignal').value;
     const days = document.getElementById('filterDays').value;
     
+    if (search) params.set('search', search);
     if (status) params.set('status', status);
     if (risk) params.set('risk_level', risk);
     if (competitor) params.set('competitor_id', competitor);
@@ -274,6 +291,16 @@ function renderPagination(current, total) {
 }
 
 function applyFilters() {
+    loadAlerts(1);
+}
+
+function clearFilters() {
+    document.getElementById('searchAlerts').value = '';
+    document.getElementById('filterStatus').value = 'new';
+    document.getElementById('filterRisk').value = '';
+    document.getElementById('filterCompetitor').value = '';
+    document.getElementById('filterSignal').value = '';
+    document.getElementById('filterDays').value = '7';
     loadAlerts(1);
 }
 

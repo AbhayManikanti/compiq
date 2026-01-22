@@ -208,6 +208,7 @@ def get_stats():
 def list_alerts():
     """List all alerts with filtering."""
     # Query parameters
+    search = request.args.get('search', '').strip()
     status = request.args.get('status')
     risk_level = request.args.get('risk_level')
     competitor_id = request.args.get('competitor_id', type=int)
@@ -218,6 +219,16 @@ def list_alerts():
     
     # Build query
     query = Alert.query
+    
+    # Search filter - search in title and summary
+    if search:
+        search_term = f'%{search}%'
+        query = query.filter(
+            db.or_(
+                Alert.title.ilike(search_term),
+                Alert.summary.ilike(search_term)
+            )
+        )
     
     if status:
         query = query.filter_by(status=status)
@@ -447,12 +458,34 @@ def delete_url(url_id):
 @api_bp.route('/news')
 def list_news():
     """List news items."""
+    search = request.args.get('search', '').strip()
+    category = request.args.get('category', '').strip()
+    source_type = request.args.get('source_type', '').strip()
     competitor_id = request.args.get('competitor_id', type=int)
     days = request.args.get('days', 7, type=int)
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 20, type=int)
     
     query = NewsItem.query.filter_by(is_relevant=True)  # Only show relevant news
+    
+    # Search filter - search in title, summary, and content
+    if search:
+        search_term = f'%{search}%'
+        query = query.filter(
+            db.or_(
+                NewsItem.title.ilike(search_term),
+                NewsItem.summary.ilike(search_term),
+                NewsItem.content.ilike(search_term)
+            )
+        )
+    
+    # Category filter
+    if category:
+        query = query.filter(NewsItem.category == category)
+    
+    # Source type filter
+    if source_type:
+        query = query.filter(NewsItem.source_type == source_type)
     
     if competitor_id:
         query = query.filter_by(competitor_id=competitor_id)

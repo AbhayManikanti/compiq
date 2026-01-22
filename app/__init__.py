@@ -24,8 +24,8 @@ if os.path.exists('/home') and os.environ.get('WEBSITE_SITE_NAME'):
 else:
     DATA_DIR = BASE_DIR / 'data'
 
-# Ensure data directory exists
-DATA_DIR.mkdir(exist_ok=True)
+# Ensure data directory exists with parents
+DATA_DIR.mkdir(parents=True, exist_ok=True)
 
 # Global scheduler instance
 scheduler = None
@@ -65,25 +65,38 @@ def create_app():
     db.init_app(app)
     
     with app.app_context():
-        # Use checkfirst=True to avoid errors on existing tables
-        try:
-            from sqlalchemy import inspect
-            inspector = inspect(db.engine)
-            existing_tables = inspector.get_table_names()
-            
-            if not existing_tables:
-                # Only create all tables if database is empty
-                db.create_all()
-            else:
-                # Database exists, let SQLAlchemy handle incremental updates
-                db.create_all(checkfirst=True)
-        except Exception as e:
-            app.logger.warning(f"Database initialization note: {e}")
-            # Try a simple create_all with checkfirst
+        db_path = DATA_DIR / 'competitor_monitor.db'
+        
+        # Ensure data directory exists before any database operations
+        DATA_DIR.mkdir(parents=True, exist_ok=True)
+        
+        # Check if we need to reset the database (due to corruption)
+        should_reset = os.environ.get('RESET_DATABASE') == 'true' or os.environ.get('DELETE_DB_ON_START') == 'true'
+        
+        if should_reset and db_path.exists():
+            app.logger.warning("RESET_DATABASE flag detected - deleting existing database")
             try:
-                db.create_all()
-            except:
-                pass  # Tables already exist, which is fine
+                db_path.unlink()
+                app.logger.info("Database file deleted successfully")
+            except Exception as e:
+                app.logger.error(f"Failed to delete database: {e}")
+        
+        # Create all tables
+        try:
+            db.create_all()
+            app.logger.info("Database initialized successfully")
+        except Exception as e:
+            error_msg = str(e).lower()
+            app.logger.error(f"Database initialization error: {e}")
+            
+            # If database is corrupted, try to delete and let next restart recreate it
+            if 'malformed' in error_msg or 'corrupt' in error_msg:
+                app.logger.error("Database corrupted - deleting for next restart")
+                try:
+                    if db_path.exists():
+                        db_path.unlink()
+                except Exception as e2:
+                    app.logger.error(f"Could not delete corrupted database: {e2}")
     
     # Register blueprints
     from .routes import main_bp, api_bp

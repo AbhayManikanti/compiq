@@ -152,9 +152,12 @@ class NewsItem(db.Model):
     
     title = db.Column(db.String(500), nullable=False)
     description = db.Column(db.Text)
+    summary = db.Column(db.Text)  # Brief summary for display
     content = db.Column(db.Text)
     url = db.Column(db.String(1000))
     source = db.Column(db.String(255))
+    source_type = db.Column(db.String(50))  # rss, newsapi, google_news, manual
+    category = db.Column(db.String(100))  # product_launch, pricing, partnership, etc.
     author = db.Column(db.String(255))
     
     published_at = db.Column(db.DateTime)
@@ -171,17 +174,20 @@ class NewsItem(db.Model):
         return {
             'id': self.id,
             'competitor_id': self.competitor_id,
+            'competitor_name': self.competitor.name if self.competitor else None,
             'title': self.title,
             'description': self.description,
+            'summary': self.summary,
             'url': self.url,
             'source': self.source,
+            'source_type': self.source_type,
+            'category': self.category,
             'author': self.author,
             'published_at': self.published_at.isoformat() if self.published_at else None,
             'collected_at': self.collected_at.isoformat() if self.collected_at else None,
             'is_processed': self.is_processed,
             'is_relevant': self.is_relevant
         }
-
 
 class Alert(db.Model):
     """Alerts generated from detected changes."""

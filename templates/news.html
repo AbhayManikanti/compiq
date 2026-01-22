@@ -4,27 +4,55 @@
 {% block page_title %}News Feed{% endblock %}
 
 {% block content %}
-<!-- Filters -->
+<!-- Search and Filters -->
 <div class="card mb-4">
     <div class="card-body">
+        <!-- Search Bar -->
+        <div class="row mb-3">
+            <div class="col-12">
+                <div class="input-group">
+                    <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+                    <input type="text" class="form-control" id="searchQuery" placeholder="Search news by keyword..." onkeypress="if(event.key==='Enter') loadNews()">
+                    <button class="btn btn-primary" onclick="loadNews()">Search</button>
+                </div>
+            </div>
+        </div>
+        <!-- Filters -->
         <div class="row g-3 align-items-end">
-            <div class="col-md-3">
+            <div class="col-md-2">
                 <label class="form-label">Competitor</label>
                 <select class="form-select" id="filterCompetitor">
                     <option value="">All Competitors</option>
                 </select>
             </div>
-            <div class="col-md-3">
+            <div class="col-md-2">
+                <label class="form-label">Category</label>
+                <select class="form-select" id="filterCategory">
+                    <option value="">All Categories</option>
+                    <option value="product">Product News</option>
+                    <option value="partnership">Partnerships</option>
+                    <option value="acquisition">Acquisitions</option>
+                    <option value="leadership">Leadership</option>
+                    <option value="industry">Industry News</option>
+                    <option value="technology">Technology</option>
+                    <option value="marketing">Marketing</option>
+                </select>
+            </div>
+            <div class="col-md-2">
                 <label class="form-label">Time Period</label>
                 <select class="form-select" id="filterDays">
                     <option value="1">Last 24 hours</option>
                     <option value="7" selected>Last 7 days</option>
                     <option value="30">Last 30 days</option>
+                    <option value="90">Last 90 days</option>
                 </select>
             </div>
             <div class="col-md-3">
                 <button class="btn btn-primary" onclick="loadNews()">
                     <i class="bi bi-funnel"></i> Apply Filters
+                </button>
+                <button class="btn btn-outline-secondary ms-2" onclick="clearFilters()">
+                    <i class="bi bi-x-circle"></i> Clear
                 </button>
             </div>
             <div class="col-md-3 text-end">
@@ -34,6 +62,11 @@
             </div>
         </div>
     </div>
+</div>
+
+<!-- Results Count -->
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <span class="text-muted">Showing <span id="newsCount">0</span> articles</span>
 </div>
 
 <!-- News Grid -->
@@ -72,6 +105,15 @@ async function loadCompetitors() {
     }
 }
 
+function clearFilters() {
+    document.getElementById('searchQuery').value = '';
+    document.getElementById('filterCategory').value = '';
+    document.getElementById('filterSource').value = '';
+    document.getElementById('filterCompetitor').value = '';
+    document.getElementById('filterDays').value = '30';
+    loadNews(1);
+}
+
 async function loadNews(page = 1) {
     currentPage = page;
     
@@ -81,9 +123,13 @@ async function loadNews(page = 1) {
     
     const competitor = document.getElementById('filterCompetitor').value;
     const days = document.getElementById('filterDays').value;
+    const search = document.getElementById('searchQuery').value;
+    const category = document.getElementById('filterCategory').value;
     
     if (competitor) params.set('competitor_id', competitor);
     if (days) params.set('days', days);
+    if (search) params.set('search', search);
+    if (category) params.set('category', category);
     
     try {
         const data = await fetchAPI(`/news?${params.toString()}`);
