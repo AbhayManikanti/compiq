@@ -126,6 +126,11 @@ def init_scheduler(app):
     """Initialize APScheduler for background tasks."""
     global scheduler
     
+    # Check if scheduler is disabled
+    if os.getenv('DISABLE_SCHEDULER', 'false').lower() in ('true', '1', 'yes'):
+        logger.info("Scheduler disabled via DISABLE_SCHEDULER environment variable")
+        return
+    
     # Only run scheduler in main worker process (not in reloader subprocess)
     if os.environ.get('WERKZEUG_RUN_MAIN') == 'true' or not app.debug:
         try:

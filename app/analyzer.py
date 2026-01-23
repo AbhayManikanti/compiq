@@ -587,13 +587,26 @@ URL: {news_item.url}
         logger.info(f"Created alert {alert.id} for news item: {news_item.title[:50]}")
         return alert
     
-    def process_pending_items(self) -> Dict[str, int]:
-        """Process all pending page changes and news items."""
+    def process_pending_items(self, max_alerts_per_run: int = 5) -> Dict[str, int]:
+        """Process all pending page changes and news items with rate limiting."""
         results = {
             'page_changes_processed': 0,
             'news_processed': 0,
-            'alerts_created': 0
+            'alerts_created': 0,
+            'skipped_rate_limit': 0
         }
+        
+        # Check how many alerts were created in the last 24 hours
+        from datetime import timedelta
+        cutoff = datetime.utcnow() - timedelta(hours=24)
+        recent_alerts_count = Alert.query.filter(Alert.detected_at >= cutoff).count()
+        max_daily_alerts = int(os.getenv('MAX_DAILY_ALERTS', 10))
+        
+        if recent_alerts_count >= max_daily_alerts:
+            logger.info(f"Daily alert limit reached ({recent_alerts_count}/{max_daily_alerts}). Skipping processing.")
+            return results
+        
+        remaining_alerts = min(max_alerts_per_run, max_daily_alerts - recent_alerts_count)
         
         # Process page changes that don't have alerts yet
         unprocessed_snapshots = PageSnapshot.query.filter(
@@ -601,9 +614,12 @@ URL: {news_item.url}
         ).outerjoin(
             Alert, 
             (Alert.source_type == 'page_change') & (Alert.source_id == PageSnapshot.id)
-        ).filter(Alert.id == None).all()
+        ).filter(Alert.id == None).limit(remaining_alerts).all()
         
         for snapshot in unprocessed_snapshots:
+            if results['alerts_created'] >= remaining_alerts:
+                results['skipped_rate_limit'] += 1
+                continue
             try:
                 alert = self.analyze_page_change(snapshot)
                 results['page_changes_processed'] += 1
@@ -611,10 +627,21 @@ URL: {news_item.url}
             except Exception as e:
                 logger.error(f"Error processing snapshot {snapshot.id}: {e}")
         
-        # Process unprocessed news items
-        unprocessed_news = NewsItem.query.filter_by(is_processed=False).all()
+        # Process unprocessed news items (limit to prevent flooding)
+        remaining = remaining_alerts - results['alerts_created']
+        if remaining <= 0:
+            logger.info("Alert limit reached, skipping news processing")
+            return results
+            
+        unprocessed_news = NewsItem.query.filter_by(is_processed=False).limit(remaining * 3).all()
         
         for news_item in unprocessed_news:
+            if results['alerts_created'] >= remaining_alerts:
+                # Mark as processed to avoid reprocessing
+                news_item.is_processed = True
+                db.session.commit()
+                results['skipped_rate_limit'] += 1
+                continue
             try:
                 alert = self.analyze_news_item(news_item)
                 results['news_processed'] += 1
@@ -623,6 +650,7 @@ URL: {news_item.url}
             except Exception as e:
                 logger.error(f"Error processing news item {news_item.id}: {e}")
         
+        logger.info(f"Processed: {results['page_changes_processed']} pages, {results['news_processed']} news, created {results['alerts_created']} alerts")
         return results
 
 
